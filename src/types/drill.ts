@@ -36,6 +36,13 @@ export interface ConeLine {
   to_cone: number;
 }
 
+export interface DrillMovement {
+  from: Position;
+  to: Position;
+  type: 'run' | 'pass' | 'dribble' | 'shot';
+  player_id?: string;
+}
+
 export interface DrillAction {
   type: 'PASS' | 'RUN' | 'DRIBBLE' | 'SHOT';
   from_player?: string;
@@ -54,6 +61,11 @@ export interface AnimationKeyframe {
   };
 }
 
+export interface Animation {
+  duration: number;
+  keyframes: AnimationKeyframe[];
+}
+
 export interface DrillJsonData {
   field?: {
     type: 'FULL' | 'HALF';
@@ -67,8 +79,14 @@ export interface DrillJsonData {
   balls?: DrillBall[];
   goals?: DrillGoal[];
   mini_goals?: DrillMiniGoal[];
+  movements?: DrillMovement[];
   actions?: DrillAction[];
   cone_lines?: ConeLine[];
+  animation?: Animation;
+  num_players?: number;
+  duration?: number;
+  intensity?: string;
+  category?: string;
 }
 
 export interface Drill {
@@ -88,42 +106,54 @@ export interface Drill {
     duration: number;
     keyframes: AnimationKeyframe[];
   };
+  animation_html_url?: string;
   setup?: string;
   instructions?: string;
   coaching_points?: string;
   variations?: string;
+  source?: string;
+  savedAt?: string;
 }
 
-// Helper functions
-export function getCategoryColor(category?: string): { bg: string; text: string } {
-  const normalized = category?.toLowerCase().trim() || '';
-  
-  const categoryMap: Record<string, { bg: string; text: string }> = {
-    passing: { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-    shooting: { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-    dribbling: { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-    defending: { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-    possession: { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-    fitness: { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-    warmup: { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-    'warm-up': { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' },
-  };
-  
-  return categoryMap[normalized] || { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' };
-}
+// ── Category / difficulty types matching Lovable ──
 
-export function getDifficultyColor(difficulty?: string): { bg: string; text: string } {
-  const normalized = difficulty?.toLowerCase().trim() || '';
-  
-  switch (normalized) {
-    case 'easy':
-      return { bg: 'rgba(74, 157, 110, 0.15)', text: '#4a9d6e' };
-    case 'medium':
-      return { bg: 'rgba(212, 166, 65, 0.15)', text: '#d4a641' };
-    case 'hard':
-    case 'difficult':
-      return { bg: 'rgba(220, 38, 38, 0.15)', text: '#dc2626' };
-    default:
-      return { bg: 'rgba(139, 145, 158, 0.15)', text: '#8b919e' };
-  }
+export type DrillCategory =
+  | 'Finishing'
+  | 'Passing & Possession'
+  | 'Defensive Shape'
+  | 'Pressing & Transitions'
+  | 'Crossing & Wide Play'
+  | 'Set Pieces'
+  | 'Conditioning'
+  | 'Warm-up'
+  | 'Cool-down'
+  | 'Technical Skills'
+  | '1v1 Situations'
+  | 'Small-Sided Games'
+  | 'Other';
+
+export type IntensityLevel = 'Low' | 'Medium' | 'High' | 'Variable' | 'Not Specified';
+
+export type AgeGroup =
+  | 'U8' | 'U10' | 'U12' | 'U14' | 'U16' | 'U18'
+  | 'College' | 'Semi-Pro' | 'Professional'
+  | 'Recreational Adult' | 'Not Specified';
+
+export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Elite' | 'Not Specified';
+
+export type FieldSize =
+  | 'Full Field' | 'Half Field' | 'Third of Field'
+  | 'Penalty Box Area'
+  | 'Small Grid (10x10 to 20x20)'
+  | 'Medium Grid (20x20 to 40x40)'
+  | 'Any/Flexible';
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  teamName: string;
+  defaultAgeGroup: AgeGroup;
+  defaultSkillLevel: SkillLevel;
+  defaultPlayerCount: number;
+  avatarUrl?: string;
 }
