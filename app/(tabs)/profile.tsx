@@ -6,13 +6,17 @@ import {
   Calendar,
   CalendarDays,
   Camera,
+  Check,
   Clock,
   Copy,
   Edit,
+  FileText,
   LayoutGrid, LayoutList,
+  Moon,
   PenTool,
   Save,
   Settings,
+  Sun,
   Trash2,
   User,
   Users,
@@ -39,20 +43,17 @@ import { clearContacts, Contact, getContacts } from '../../src/lib/contactsStora
 import { clearCustomDrills, deleteCustomDrill, getCustomDrills } from '../../src/lib/customDrillStorage';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
 import { clearAllData, getSavedDrills, getUserProfile, removeDrill, saveUserProfile } from '../../src/lib/storage';
-import { borderRadius, colors, spacing } from '../../src/theme/colors';
+import { useTheme } from '../../src/theme/ThemeContext';
+import { borderRadius, spacing } from '../../src/theme/colors';
 import { CustomDrill } from '../../src/types/customDrill';
-import { Drill, UserProfile } from '../../src/types/drill';
+import { Drill, PdfSettings, defaultPdfSettings, UserProfile } from '../../src/types/drill';
 import { Session } from '../../src/types/session';
 
 type ProfileTab = 'custom' | 'saved' | 'sessions';
 
-// Helper to render a session's first diagram thumbnail
-function SessionDiagramImage({ uri }: { uri: string }) {
-  return <Image source={{ uri }} style={{ width: '100%', height: '100%' }} contentFit="contain" />;
-}
-
 export default function ProfileScreen() {
   const router = useRouter();
+  const { colors, isDark, toggleTheme } = useTheme();
   const [profile, setProfile] = useState<UserProfile>({
     name: '', email: '', teamName: '',
     defaultAgeGroup: 'Not Specified', defaultSkillLevel: 'Not Specified', defaultPlayerCount: 12,
@@ -66,6 +67,7 @@ export default function ProfileScreen() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [gridCols, setGridCols] = useState<1 | 2>(2);
+  const [pdfSettings, setPdfSettings] = useState<PdfSettings>(defaultPdfSettings);
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
 
@@ -74,6 +76,7 @@ export default function ProfileScreen() {
       getUserProfile(), getSavedDrills(), getCustomDrills(), getSessions(), getContacts(),
     ]);
     setProfile(p);
+    setPdfSettings(p.pdfSettings || defaultPdfSettings);
     setSavedDrills(saved);
     setCustomDrills(custom);
     setSessions(sess.sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
@@ -85,8 +88,13 @@ export default function ProfileScreen() {
     setHasChanges(true);
   };
 
+  const handlePdfSettingToggle = (key: keyof PdfSettings) => {
+    setPdfSettings((prev) => ({ ...prev, [key]: !prev[key] }));
+    setHasChanges(true);
+  };
+
   const handleSaveProfile = async () => {
-    await saveUserProfile(profile);
+    await saveUserProfile({ ...profile, pdfSettings });
     setHasChanges(false);
     setSettingsOpen(false);
   };
@@ -148,20 +156,20 @@ export default function ProfileScreen() {
 
   const renderColumnToggle = () => (
     <View style={ps.viewToggle}>
-      <TouchableOpacity style={[ps.toggleBtn, gridCols === 1 && ps.toggleBtnActive]} onPress={() => setGridCols(1)}>
+      <TouchableOpacity style={[ps.toggleBtn, { backgroundColor: colors.card, borderColor: colors.border }, gridCols === 1 && { backgroundColor: colors.primary, borderColor: colors.primary }]} onPress={() => setGridCols(1)}>
         <LayoutList size={14} color={gridCols === 1 ? colors.primaryForeground : colors.mutedForeground} />
       </TouchableOpacity>
-      <TouchableOpacity style={[ps.toggleBtn, gridCols === 2 && ps.toggleBtnActive]} onPress={() => setGridCols(2)}>
+      <TouchableOpacity style={[ps.toggleBtn, { backgroundColor: colors.card, borderColor: colors.border }, gridCols === 2 && { backgroundColor: colors.primary, borderColor: colors.primary }]} onPress={() => setGridCols(2)}>
         <LayoutGrid size={14} color={gridCols === 2 ? colors.primaryForeground : colors.mutedForeground} />
       </TouchableOpacity>
     </View>
   );
 
   const renderEmptyState = (icon: React.ReactNode, title: string, subtitle: string) => (
-    <View style={ps.emptyState}>
-      <View style={ps.emptyIcon}>{icon}</View>
-      <Text style={ps.emptyTitle}>{title}</Text>
-      <Text style={ps.emptySubtitle}>{subtitle}</Text>
+    <View style={[ps.emptyState, { borderColor: colors.border }]}>
+      <View style={[ps.emptyIcon, { backgroundColor: colors.card }]}>{icon}</View>
+      <Text style={[ps.emptyTitle, { color: colors.foreground }]}>{title}</Text>
+      <Text style={[ps.emptySubtitle, { color: colors.mutedForeground }]}>{subtitle}</Text>
     </View>
   );
 
@@ -170,7 +178,7 @@ export default function ProfileScreen() {
       return renderEmptyState(<PenTool size={28} color={colors.mutedForeground} />, 'No custom drills yet', 'Create your first drill with the visual editor');
     return (
       <View>
-        <View style={ps.tabSubHeader}><Text style={ps.tabCount}>{customDrills.length} drills</Text>{renderColumnToggle()}</View>
+        <View style={ps.tabSubHeader}><Text style={[ps.tabCount, { color: colors.mutedForeground }]}>{customDrills.length} drills</Text>{renderColumnToggle()}</View>
         <View style={gridCols === 2 ? ps.grid2 : undefined}>
           {customDrills.map((drill) => (
             <View key={drill.id} style={gridCols === 2 ? ps.gridItem : undefined}>
@@ -187,7 +195,7 @@ export default function ProfileScreen() {
       return renderEmptyState(<BookmarkX size={28} color={colors.mutedForeground} />, 'No saved drills yet', 'Save drills from the Library to access them here');
     return (
       <View>
-        <View style={ps.tabSubHeader}><Text style={ps.tabCount}>{savedDrills.length} saved</Text>{renderColumnToggle()}</View>
+        <View style={ps.tabSubHeader}><Text style={[ps.tabCount, { color: colors.mutedForeground }]}>{savedDrills.length} saved</Text>{renderColumnToggle()}</View>
         <View style={gridCols === 2 ? ps.grid2 : undefined}>
           {savedDrills.map((drill) => (
             <View key={drill.id} style={gridCols === 2 ? ps.gridItem : undefined}>
@@ -210,63 +218,59 @@ export default function ProfileScreen() {
       return renderEmptyState(<CalendarDays size={28} color={colors.mutedForeground} />, 'No sessions yet', 'Create a training session to see it here');
     return (
       <View>
-        <View style={ps.tabSubHeader}><Text style={ps.tabCount}>{sessions.length} sessions</Text>{renderColumnToggle()}</View>
+        <View style={ps.tabSubHeader}><Text style={[ps.tabCount, { color: colors.mutedForeground }]}>{sessions.length} sessions</Text>{renderColumnToggle()}</View>
         <View style={gridCols === 2 ? ps.grid2 : undefined}>
           {sessions.map((session) => {
             const totalDur = session.activities.reduce((s, a) => s + a.duration_minutes, 0);
             const actCount = session.activities.length;
-            const firstDiagramUrl = session.activities.find(a => a.drill_svg_url)?.drill_svg_url;
 
             if (gridCols === 2) {
-              // Compact card view (grid)
               return (
                 <View key={session.id} style={ps.gridItem}>
                   <TouchableOpacity
-                    style={ps.sessionGridCard}
+                    style={[ps.sessionGridCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                     onPress={() => router.push({ pathname: '/session-view', params: { id: session.id } })}
                     activeOpacity={0.7}
                   >
-                    {/* Diagram preview or placeholder */}
-                    <View style={ps.sessionGridDiagram}>
-                      {firstDiagramUrl ? (
-                        <SessionDiagramImage uri={firstDiagramUrl} />
-                      ) : (
-                        <View style={ps.sessionGridPlaceholder}>
-                          <CalendarDays size={20} color="rgba(255,255,255,0.4)" />
-                        </View>
-                      )}
-                      <View style={ps.sessionGridBadge}>
-                        <Text style={ps.sessionGridBadgeText}>{actCount} {actCount === 1 ? 'act' : 'acts'}</Text>
-                      </View>
-                    </View>
                     <View style={ps.sessionGridContent}>
-                      <Text style={ps.sessionGridTitle} numberOfLines={2}>{session.title || 'Untitled Session'}</Text>
-                      <View style={ps.sessionGridMeta}>
-                        <Clock size={10} color={colors.mutedForeground} />
-                        <Text style={ps.sessionGridMetaText}>{totalDur} min</Text>
-                      </View>
-                      {session.session_date ? (
+                      <Text style={[ps.sessionGridTitle, { color: colors.foreground }]} numberOfLines={2}>{session.title || 'Untitled Session'}</Text>
+                      <View style={ps.sessionGridMetaBlock}>
                         <View style={ps.sessionGridMeta}>
-                          <Calendar size={10} color={colors.mutedForeground} />
-                          <Text style={ps.sessionGridMetaText}>{formatDate(session.session_date)}</Text>
+                          <Clock size={10} color={colors.mutedForeground} />
+                          <Text style={[ps.sessionGridMetaText, { color: colors.mutedForeground }]}>{totalDur} min</Text>
                         </View>
-                      ) : null}
+                        <View style={ps.sessionGridMeta}>
+                          <CalendarDays size={10} color={colors.mutedForeground} />
+                          <Text style={[ps.sessionGridMetaText, { color: colors.mutedForeground }]}>{actCount} {actCount === 1 ? 'act' : 'acts'}</Text>
+                        </View>
+                        {session.session_date ? (
+                          <View style={ps.sessionGridMeta}>
+                            <Calendar size={10} color={colors.mutedForeground} />
+                            <Text style={[ps.sessionGridMetaText, { color: colors.mutedForeground }]}>{formatDate(session.session_date)}</Text>
+                          </View>
+                        ) : null}
+                        {session.team_name ? (
+                          <View style={ps.sessionGridMeta}>
+                            <Users size={10} color={colors.mutedForeground} />
+                            <Text style={[ps.sessionGridMetaText, { color: colors.mutedForeground }]} numberOfLines={1}>{session.team_name}</Text>
+                          </View>
+                        ) : null}
+                      </View>
                     </View>
                   </TouchableOpacity>
                 </View>
               );
             }
 
-            // List view (single column)
             return (
               <TouchableOpacity
                 key={session.id}
-                style={ps.sessionCard}
+                style={[ps.sessionCard, { backgroundColor: colors.card, borderColor: colors.border }]}
                 onPress={() => router.push({ pathname: '/session-view', params: { id: session.id } })}
                 activeOpacity={0.7}
               >
                 <View style={ps.sessionCardHeader}>
-                  <Text style={ps.sessionTitle} numberOfLines={1}>{session.title || 'Untitled Session'}</Text>
+                  <Text style={[ps.sessionTitle, { color: colors.foreground }]} numberOfLines={1}>{session.title || 'Untitled Session'}</Text>
                   <View style={ps.sessionActions}>
                     <TouchableOpacity hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} onPress={() => router.push({ pathname: '/session-editor', params: { id: session.id } })}>
                       <Edit size={14} color={colors.mutedForeground} />
@@ -281,12 +285,12 @@ export default function ProfileScreen() {
                 </View>
                 <View style={ps.sessionMeta}>
                   {session.session_date ? (
-                    <View style={ps.sessionMetaRow}><Calendar size={13} color={colors.mutedForeground} /><Text style={ps.sessionMetaText}>{formatDate(session.session_date)}{session.session_time ? ` at ${session.session_time}` : ''}</Text></View>
+                    <View style={ps.sessionMetaRow}><Calendar size={13} color={colors.mutedForeground} /><Text style={[ps.sessionMetaText, { color: colors.mutedForeground }]}>{formatDate(session.session_date)}{session.session_time ? ` at ${session.session_time}` : ''}</Text></View>
                   ) : null}
                   {session.team_name ? (
-                    <View style={ps.sessionMetaRow}><Users size={13} color={colors.mutedForeground} /><Text style={ps.sessionMetaText}>{session.team_name}</Text></View>
+                    <View style={ps.sessionMetaRow}><Users size={13} color={colors.mutedForeground} /><Text style={[ps.sessionMetaText, { color: colors.mutedForeground }]}>{session.team_name}</Text></View>
                   ) : null}
-                  <View style={ps.sessionMetaRow}><Clock size={13} color={colors.mutedForeground} /><Text style={ps.sessionMetaText}>{actCount} {actCount === 1 ? 'activity' : 'activities'} · {totalDur} min</Text></View>
+                  <View style={ps.sessionMetaRow}><Clock size={13} color={colors.mutedForeground} /><Text style={[ps.sessionMetaText, { color: colors.mutedForeground }]}>{actCount} {actCount === 1 ? 'activity' : 'activities'} · {totalDur} min</Text></View>
                 </View>
               </TouchableOpacity>
             );
@@ -296,13 +300,22 @@ export default function ProfileScreen() {
     );
   };
 
+  const renderCheckbox = (label: string, checked: boolean, onToggle: () => void) => (
+    <TouchableOpacity style={ps.checkboxRow} onPress={onToggle} activeOpacity={0.7}>
+      <View style={[ps.checkboxBox, { borderColor: colors.border, backgroundColor: colors.background }, checked && { backgroundColor: colors.primary, borderColor: colors.primary }]}>
+        {checked && <Check size={12} color={colors.primaryForeground} />}
+      </View>
+      <Text style={[ps.checkboxLabel, { color: colors.foreground }]}>{label}</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={ps.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
-      <View style={ps.header}>
+    <SafeAreaView style={[ps.container, { backgroundColor: colors.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={colors.background} />
+      <View style={[ps.header, { borderBottomColor: colors.border }]}>
         <View style={ps.headerLeft}>
-          <View style={ps.logoContainer}><User size={20} color={colors.primaryForeground} /></View>
-          <Text style={ps.headerTitle}>My Profile</Text>
+          <View style={[ps.logoContainer, { backgroundColor: colors.primary }]}><User size={20} color={colors.primaryForeground} /></View>
+          <Text style={[ps.headerTitle, { color: colors.foreground }]}>My Profile</Text>
         </View>
         <TouchableOpacity style={ps.settingsButton} onPress={() => setSettingsOpen(true)}>
           <Settings size={22} color={colors.mutedForeground} />
@@ -311,41 +324,41 @@ export default function ProfileScreen() {
 
       <ScrollView style={ps.scrollView} contentContainerStyle={ps.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
-        <View style={ps.profileCard}>
-          <View style={ps.banner} />
+        <View style={[ps.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
+          <View style={[ps.banner, { backgroundColor: colors.primary }]} />
           <View style={ps.profileBody}>
             <View style={ps.avatarRow}>
-              <TouchableOpacity style={ps.avatar} onPress={handlePickAvatar}>
+              <TouchableOpacity style={[ps.avatar, { backgroundColor: colors.primary, borderColor: colors.card }]} onPress={handlePickAvatar}>
                 {profile.avatarUrl ? (
                   <Image source={{ uri: profile.avatarUrl }} style={{ width: 64, height: 64, borderRadius: 32 }} />
                 ) : (
-                  <Text style={ps.avatarText}>{getInitials(profile.name)}</Text>
+                  <Text style={[ps.avatarText, { color: colors.primaryForeground }]}>{getInitials(profile.name)}</Text>
                 )}
                 <View style={ps.cameraOverlay}><Camera size={14} color="#fff" /></View>
               </TouchableOpacity>
               <View style={ps.profileInfo}>
-                <Text style={ps.profileName}>{profile.name || 'Coach'}</Text>
-                <Text style={ps.profileTeam}>{profile.teamName || 'No team set'}</Text>
+                <Text style={[ps.profileName, { color: colors.foreground }]}>{profile.name || 'Coach'}</Text>
+                <Text style={[ps.profileTeam, { color: colors.mutedForeground }]}>{profile.teamName || 'No team set'}</Text>
               </View>
             </View>
             <View style={ps.statsRow}>
-              <View style={ps.statBox}><Text style={ps.statNumber}>{customDrills.length}</Text><Text style={ps.statLabel}>My Drills</Text></View>
-              <View style={ps.statBox}><Text style={ps.statNumber}>{savedDrills.length}</Text><Text style={ps.statLabel}>Saved</Text></View>
-              <View style={ps.statBox}><Text style={ps.statNumber}>{sessions.length}</Text><Text style={ps.statLabel}>Sessions</Text></View>
+              <View style={ps.statBox}><Text style={[ps.statNumber, { color: colors.foreground }]}>{customDrills.length}</Text><Text style={[ps.statLabel, { color: colors.mutedForeground }]}>My Drills</Text></View>
+              <View style={ps.statBox}><Text style={[ps.statNumber, { color: colors.foreground }]}>{savedDrills.length}</Text><Text style={[ps.statLabel, { color: colors.mutedForeground }]}>Saved</Text></View>
+              <View style={ps.statBox}><Text style={[ps.statNumber, { color: colors.foreground }]}>{sessions.length}</Text><Text style={[ps.statLabel, { color: colors.mutedForeground }]}>Sessions</Text></View>
             </View>
           </View>
         </View>
 
         {/* Tabs */}
-        <View style={ps.tabBar}>
+        <View style={[ps.tabBar, { backgroundColor: colors.card }]}>
           {([
             { key: 'custom' as ProfileTab, icon: PenTool, label: 'Drills' },
             { key: 'saved' as ProfileTab, icon: BookmarkX, label: 'Saved' },
             { key: 'sessions' as ProfileTab, icon: CalendarDays, label: 'Sessions' },
           ]).map(({ key, icon: Icon, label }) => (
-            <TouchableOpacity key={key} style={[ps.tabItem, activeTab === key && ps.tabItemActive]} onPress={() => setActiveTab(key)}>
+            <TouchableOpacity key={key} style={[ps.tabItem, activeTab === key && { backgroundColor: colors.background }]} onPress={() => setActiveTab(key)}>
               <Icon size={14} color={activeTab === key ? colors.foreground : colors.mutedForeground} />
-              <Text style={[ps.tabLabel, activeTab === key && ps.tabLabelActive]}>{label} ({tabCounts[key]})</Text>
+              <Text style={[ps.tabLabel, { color: colors.mutedForeground }, activeTab === key && { color: colors.foreground, fontWeight: '600' }]}>{label} ({tabCounts[key]})</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -360,34 +373,72 @@ export default function ProfileScreen() {
       {/* Settings Modal */}
       <Modal visible={settingsOpen} transparent animationType="slide" statusBarTranslucent onRequestClose={() => setSettingsOpen(false)}>
         <Pressable style={ps.settingsBackdrop} onPress={() => setSettingsOpen(false)} />
-        <View style={ps.settingsSheet}>
-          <View style={ps.settingsHandle}><View style={ps.handle} /></View>
-          <TouchableOpacity style={ps.settingsClose} onPress={() => setSettingsOpen(false)}>
+        <View style={[ps.settingsSheet, { backgroundColor: colors.background }]}>
+          <View style={ps.settingsHandle}><View style={[ps.handle, { backgroundColor: colors.border }]} /></View>
+          <TouchableOpacity style={[ps.settingsClose, { backgroundColor: colors.card }]} onPress={() => setSettingsOpen(false)}>
             <X size={22} color={colors.foreground} />
           </TouchableOpacity>
 
-          <ScrollView style={{ maxHeight: 500 }} contentContainerStyle={ps.settingsForm} showsVerticalScrollIndicator={false}>
-            <Text style={ps.settingsTitle}>Settings</Text>
+          <ScrollView style={{ maxHeight: 550 }} contentContainerStyle={ps.settingsForm} showsVerticalScrollIndicator={false}>
+            <Text style={[ps.settingsTitle, { color: colors.foreground }]}>Settings</Text>
+
+            {/* Theme Toggle */}
+            <View style={[ps.themeToggleSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={ps.themeToggleHeader}>
+                {isDark ? <Moon size={14} color={colors.primary} /> : <Sun size={14} color={colors.primary} />}
+                <Text style={[ps.themeToggleTitle, { color: colors.foreground }]}>Appearance</Text>
+              </View>
+              <View style={ps.themeToggleRow}>
+                <TouchableOpacity
+                  style={[ps.themeOption, { borderColor: colors.border }, isDark && { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+                  onPress={() => { if (!isDark) toggleTheme(); }}
+                  activeOpacity={0.7}
+                >
+                  <Moon size={16} color={isDark ? colors.primary : colors.mutedForeground} />
+                  <Text style={[ps.themeOptionText, { color: isDark ? colors.primary : colors.mutedForeground }]}>Dark</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[ps.themeOption, { borderColor: colors.border }, !isDark && { borderColor: colors.primary, backgroundColor: colors.primaryLight }]}
+                  onPress={() => { if (isDark) toggleTheme(); }}
+                  activeOpacity={0.7}
+                >
+                  <Sun size={16} color={!isDark ? colors.primary : colors.mutedForeground} />
+                  <Text style={[ps.themeOptionText, { color: !isDark ? colors.primary : colors.mutedForeground }]}>Light</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
 
             <View style={ps.formGroup}>
-              <Text style={ps.formLabel}>Name</Text>
-              <TextInput style={ps.formInput} placeholder="Your name" placeholderTextColor={colors.mutedForeground} value={profile.name} onChangeText={(v) => handleProfileChange('name', v)} />
+              <Text style={[ps.formLabel, { color: colors.foreground }]}>Name</Text>
+              <TextInput style={[ps.formInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} placeholder="Your name" placeholderTextColor={colors.mutedForeground} value={profile.name} onChangeText={(v) => handleProfileChange('name', v)} />
             </View>
             <View style={ps.formGroup}>
-              <Text style={ps.formLabel}>Email</Text>
-              <TextInput style={ps.formInput} placeholder="your@email.com" placeholderTextColor={colors.mutedForeground} value={profile.email} onChangeText={(v) => handleProfileChange('email', v)} keyboardType="email-address" autoCapitalize="none" />
+              <Text style={[ps.formLabel, { color: colors.foreground }]}>Email</Text>
+              <TextInput style={[ps.formInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} placeholder="your@email.com" placeholderTextColor={colors.mutedForeground} value={profile.email} onChangeText={(v) => handleProfileChange('email', v)} keyboardType="email-address" autoCapitalize="none" />
             </View>
             <View style={ps.formGroup}>
-              <Text style={ps.formLabel}>Team / Organization</Text>
-              <TextInput style={ps.formInput} placeholder="Your team name" placeholderTextColor={colors.mutedForeground} value={profile.teamName} onChangeText={(v) => handleProfileChange('teamName', v)} />
+              <Text style={[ps.formLabel, { color: colors.foreground }]}>Team / Organization</Text>
+              <TextInput style={[ps.formInput, { backgroundColor: colors.card, borderColor: colors.border, color: colors.foreground }]} placeholder="Your team name" placeholderTextColor={colors.mutedForeground} value={profile.teamName} onChangeText={(v) => handleProfileChange('teamName', v)} />
             </View>
 
-            <TouchableOpacity style={[ps.saveButton, !hasChanges && ps.saveButtonDisabled]} onPress={handleSaveProfile} disabled={!hasChanges}>
+            {/* PDF Content Settings */}
+            <View style={[ps.pdfSettingsSection, { backgroundColor: colors.card, borderColor: colors.border }]}>
+              <View style={ps.pdfSettingsHeader}>
+                <FileText size={14} color={colors.primary} />
+                <Text style={[ps.pdfSettingsTitle, { color: colors.foreground }]}>PDF Export Content</Text>
+              </View>
+              <Text style={[ps.pdfSettingsSubtitle, { color: colors.mutedForeground }]}>Select what to include for each activity in exported PDFs</Text>
+              {renderCheckbox('Diagram', pdfSettings.includeDiagram, () => handlePdfSettingToggle('includeDiagram'))}
+              {renderCheckbox('Setup', pdfSettings.includeSetup, () => handlePdfSettingToggle('includeSetup'))}
+              {renderCheckbox('Instructions', pdfSettings.includeInstructions, () => handlePdfSettingToggle('includeInstructions'))}
+            </View>
+
+            <TouchableOpacity style={[ps.saveButton, { backgroundColor: colors.primary }, !hasChanges && ps.saveButtonDisabled]} onPress={handleSaveProfile} disabled={!hasChanges}>
               <Save size={16} color={colors.primaryForeground} />
-              <Text style={ps.saveButtonText}>Save Settings</Text>
+              <Text style={[ps.saveButtonText, { color: colors.primaryForeground }]}>Save Settings</Text>
             </TouchableOpacity>
 
-            <View style={ps.contactsDivider} />
+            <View style={[ps.contactsDivider, { backgroundColor: colors.border }]} />
             <ContactsManager contacts={contacts} onContactsChange={setContacts} />
 
             <TouchableOpacity style={ps.clearDataButton} onPress={handleClearAllData}>
@@ -409,78 +460,85 @@ export default function ProfileScreen() {
 }
 
 const ps = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  container: { flex: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  logoContainer: { width: 40, height: 40, borderRadius: borderRadius.md, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 24, fontWeight: '700', color: colors.foreground },
+  logoContainer: { width: 40, height: 40, borderRadius: borderRadius.md, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: '700' },
   settingsButton: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
   scrollView: { flex: 1 },
   scrollContent: { paddingHorizontal: spacing.md, paddingTop: spacing.lg, paddingBottom: 120 },
-  profileCard: { borderRadius: borderRadius.xl, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card, overflow: 'hidden', marginBottom: spacing.lg },
-  banner: { height: 80, backgroundColor: colors.primary, opacity: 0.7 },
+  profileCard: { borderRadius: borderRadius.xl, borderWidth: 1, overflow: 'hidden', marginBottom: spacing.lg },
+  banner: { height: 80, opacity: 0.7 },
   profileBody: { paddingHorizontal: spacing.md, paddingBottom: spacing.md },
   avatarRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.md, marginTop: -32 },
-  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: colors.card, overflow: 'hidden' },
-  avatarText: { fontSize: 22, fontWeight: '700', color: colors.primaryForeground },
+  avatar: { width: 64, height: 64, borderRadius: 32, justifyContent: 'center', alignItems: 'center', borderWidth: 3, overflow: 'hidden' },
+  avatarText: { fontSize: 22, fontWeight: '700' },
   cameraOverlay: { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   profileInfo: { flex: 1, paddingBottom: 4 },
-  profileName: { fontSize: 18, fontWeight: '700', color: colors.foreground },
-  profileTeam: { fontSize: 13, color: colors.mutedForeground, marginTop: 2 },
+  profileName: { fontSize: 18, fontWeight: '700' },
+  profileTeam: { fontSize: 13, marginTop: 2 },
   statsRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.md },
   statBox: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.md, backgroundColor: 'rgba(139, 145, 158, 0.1)' },
-  statNumber: { fontSize: 18, fontWeight: '700', color: colors.foreground },
-  statLabel: { fontSize: 11, color: colors.mutedForeground, marginTop: 2 },
-  tabBar: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: borderRadius.md, padding: 4, marginBottom: spacing.md },
+  statNumber: { fontSize: 18, fontWeight: '700' },
+  statLabel: { fontSize: 11, marginTop: 2 },
+  tabBar: { flexDirection: 'row', borderRadius: borderRadius.md, padding: 4, marginBottom: spacing.md },
   tabItem: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: borderRadius.sm },
-  tabItemActive: { backgroundColor: colors.background },
-  tabLabel: { fontSize: 11, fontWeight: '500', color: colors.mutedForeground },
-  tabLabelActive: { color: colors.foreground, fontWeight: '600' },
+  tabLabel: { fontSize: 11, fontWeight: '500' },
   tabContent: { minHeight: 200 },
   tabSubHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
-  tabCount: { fontSize: 13, color: colors.mutedForeground },
+  tabCount: { fontSize: 13 },
   viewToggle: { flexDirection: 'row', gap: 4 },
-  toggleBtn: { width: 28, height: 28, borderRadius: borderRadius.sm, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
-  toggleBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  toggleBtn: { width: 28, height: 28, borderRadius: borderRadius.sm, borderWidth: 1, justifyContent: 'center', alignItems: 'center' },
   grid2: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'stretch' },
   gridItem: { width: '50%' },
-  emptyState: { alignItems: 'center', paddingVertical: spacing.xl * 2, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, borderRadius: borderRadius.lg },
-  emptyIcon: { width: 56, height: 56, borderRadius: 28, backgroundColor: colors.card, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
-  emptyTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs },
-  emptySubtitle: { fontSize: 13, color: colors.mutedForeground, textAlign: 'center', paddingHorizontal: spacing.xl },
-  // Session cards with full actions
-  sessionCard: { backgroundColor: colors.card, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md, marginBottom: spacing.sm },
+  emptyState: { alignItems: 'center', paddingVertical: spacing.xl * 2, borderWidth: 1, borderStyle: 'dashed', borderRadius: borderRadius.lg },
+  emptyIcon: { width: 56, height: 56, borderRadius: 28, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md },
+  emptyTitle: { fontSize: 15, fontWeight: '600', marginBottom: spacing.xs },
+  emptySubtitle: { fontSize: 13, textAlign: 'center', paddingHorizontal: spacing.xl },
+  sessionCard: { borderRadius: borderRadius.md, borderWidth: 1, padding: spacing.md, marginBottom: spacing.sm },
   sessionCardHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: spacing.sm },
-  sessionTitle: { fontSize: 16, fontWeight: '600', color: colors.foreground, flex: 1, marginRight: spacing.sm },
+  sessionTitle: { fontSize: 16, fontWeight: '600', flex: 1, marginRight: spacing.sm },
   sessionActions: { flexDirection: 'row', gap: spacing.md },
   sessionMeta: { gap: 4 },
   sessionMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  sessionMetaText: { fontSize: 12, color: colors.mutedForeground },
-  // Session grid cards (compact)
-  sessionGridCard: { flex: 1, backgroundColor: colors.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border, marginHorizontal: spacing.xs, marginVertical: spacing.xs, overflow: 'hidden' },
-  sessionGridDiagram: { aspectRatio: 4 / 3, backgroundColor: colors.fieldDark, position: 'relative' },
-  sessionGridPlaceholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  sessionGridBadge: { position: 'absolute', top: spacing.xs, right: spacing.xs, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: borderRadius.full },
-  sessionGridBadgeText: { fontSize: 9, fontWeight: '600', color: '#fff' },
-  sessionGridContent: { padding: spacing.sm, gap: 3 },
-  sessionGridTitle: { fontSize: 13, fontWeight: '600', color: colors.foreground, marginBottom: 2 },
+  sessionMetaText: { fontSize: 12 },
+  sessionGridCard: { flex: 1, borderRadius: borderRadius.lg, borderWidth: 1, marginHorizontal: spacing.xs, marginVertical: spacing.xs, overflow: 'hidden' },
+  sessionGridContent: { padding: spacing.sm, gap: 4 },
+  sessionGridTitle: { fontSize: 13, fontWeight: '600', marginBottom: 2 },
+  sessionGridMetaBlock: { gap: 3 },
   sessionGridMeta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  sessionGridMetaText: { fontSize: 10, color: colors.mutedForeground },
+  sessionGridMetaText: { fontSize: 10 },
   // Settings modal
   settingsBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-  settingsSheet: { backgroundColor: colors.background, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingBottom: 40 },
+  settingsSheet: { borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingBottom: 40 },
   settingsHandle: { alignItems: 'center', paddingVertical: spacing.sm },
-  handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2 },
-  settingsClose: { position: 'absolute', top: spacing.md, right: spacing.md, width: 36, height: 36, borderRadius: 18, backgroundColor: colors.card, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
-  settingsTitle: { fontSize: 20, fontWeight: '700', color: colors.foreground, marginBottom: spacing.md },
+  handle: { width: 40, height: 4, borderRadius: 2 },
+  settingsClose: { position: 'absolute', top: spacing.md, right: spacing.md, width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  settingsTitle: { fontSize: 20, fontWeight: '700', marginBottom: spacing.md },
   settingsForm: { paddingHorizontal: spacing.lg, gap: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.lg },
   formGroup: { gap: spacing.xs },
-  formLabel: { fontSize: 13, fontWeight: '500', color: colors.foreground },
-  formInput: { backgroundColor: colors.card, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.md, paddingVertical: 12, color: colors.foreground, fontSize: 15 },
-  saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: borderRadius.md, marginTop: spacing.sm },
+  formLabel: { fontSize: 13, fontWeight: '500' },
+  formInput: { borderRadius: borderRadius.md, borderWidth: 1, paddingHorizontal: spacing.md, paddingVertical: 12, fontSize: 15 },
+  saveButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14, borderRadius: borderRadius.md, marginTop: spacing.sm },
   saveButtonDisabled: { opacity: 0.4 },
-  saveButtonText: { fontSize: 14, fontWeight: '600', color: colors.primaryForeground },
-  contactsDivider: { height: 1, backgroundColor: colors.border, marginVertical: spacing.sm },
+  saveButtonText: { fontSize: 14, fontWeight: '600' },
+  contactsDivider: { height: 1, marginVertical: spacing.sm },
   clearDataButton: { alignItems: 'center', paddingVertical: 12, marginTop: spacing.sm },
-  clearDataText: { fontSize: 13, color: colors.destructive, fontWeight: '500' },
+  clearDataText: { fontSize: 13, color: '#dc2626', fontWeight: '500' },
+  // PDF Settings
+  pdfSettingsSection: { borderRadius: borderRadius.md, borderWidth: 1, padding: spacing.md },
+  pdfSettingsHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4 },
+  pdfSettingsTitle: { fontSize: 14, fontWeight: '600' },
+  pdfSettingsSubtitle: { fontSize: 12, marginBottom: spacing.sm },
+  checkboxRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingVertical: 8 },
+  checkboxBox: { width: 22, height: 22, borderRadius: borderRadius.sm, borderWidth: 1.5, justifyContent: 'center', alignItems: 'center' },
+  checkboxLabel: { fontSize: 14 },
+  // Theme toggle
+  themeToggleSection: { borderRadius: borderRadius.md, borderWidth: 1, padding: spacing.md },
+  themeToggleHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  themeToggleTitle: { fontSize: 14, fontWeight: '600' },
+  themeToggleRow: { flexDirection: 'row', gap: spacing.sm },
+  themeOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1.5 },
+  themeOptionText: { fontSize: 14, fontWeight: '600' },
 });

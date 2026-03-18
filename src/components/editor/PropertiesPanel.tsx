@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Switch, ScrollView } from 're
 import { Trash2, Settings } from 'lucide-react-native';
 import { DiagramData, SelectedEntity, PLAYER_COLORS } from '../../types/customDrill';
 import { colors, spacing, borderRadius } from '../../theme/colors';
+import { useTheme } from '../../theme/ThemeContext';
 
 interface PropertiesPanelProps {
   diagram: DiagramData;
@@ -19,6 +20,7 @@ const actionColors: Record<string, string> = {
 };
 
 export function PropertiesPanel({ diagram, selectedEntity, onDiagramChange, onDeleteSelected }: PropertiesPanelProps) {
+  const { colors: tc } = useTheme();
   const totalEntities = diagram.players.length + diagram.cones.length + diagram.balls.length + diagram.goals.length;
 
   const toggleMarkings = (val: boolean) => {
@@ -47,7 +49,7 @@ export function PropertiesPanel({ diagram, selectedEntity, onDiagramChange, onDe
       {/* Field Markings */}
       <View style={p.row}>
         <Text style={p.label}>Show Field Markings</Text>
-        <Switch value={diagram.field.markings} onValueChange={toggleMarkings} trackColor={{ false: colors.border, true: colors.primary }} thumbColor="#fff" />
+        <Switch value={diagram.field.markings} onValueChange={toggleMarkings} trackColor={{ false: tc.border, true: tc.primary }} thumbColor="#fff" />
       </View>
 
       <View style={p.divider} />
@@ -129,7 +131,7 @@ export function PropertiesPanel({ diagram, selectedEntity, onDiagramChange, onDe
             const label = action.type === 'PASS' ? `${action.fromPlayerId} → ${action.toPlayerId}` : action.playerId;
             return (
               <View key={action.id} style={[p.entityRow, selectedEntity?.id === action.id && p.entityRowSel]}>
-                <Text style={[p.entityName, { color: actionColors[action.type] || colors.foreground }]}>{action.type}</Text>
+                <Text style={[p.entityName, { color: actionColors[action.type] || tc.foreground }]}>{action.type}</Text>
                 <Text style={p.entityDetail}>{label}</Text>
                 <View style={{ flex: 1 }} />
                 <TouchableOpacity onPress={() => deleteEntity('action', action.id)} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
@@ -165,19 +167,19 @@ const p = StyleSheet.create({
   container: { maxHeight: 350 },
   content: { padding: spacing.sm, gap: spacing.sm },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  label: { fontSize: 13, color: colors.foreground },
-  divider: { height: 1, backgroundColor: colors.border },
-  sectionLabel: { fontSize: 9, fontWeight: '700', color: colors.mutedForeground, letterSpacing: 1 },
+  label: { fontSize: 13, color: '#e8eaed' },
+  divider: { height: 1, backgroundColor: '#2a3142' },
+  sectionLabel: { fontSize: 9, fontWeight: '700', color: '#8b919e', letterSpacing: 1 },
   selectedHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   deleteBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(239,68,68,0.15)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: borderRadius.sm },
   deleteText: { fontSize: 11, color: '#ef4444' },
-  selectedBox: { backgroundColor: colors.card, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: 'rgba(74,157,110,0.3)', padding: spacing.sm },
-  selectedText: { fontSize: 13, color: colors.foreground },
-  entityRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.card, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, paddingVertical: 8, paddingHorizontal: 10 },
+  selectedBox: { backgroundColor: '#1e2433', borderRadius: borderRadius.sm, borderWidth: 1, borderColor: 'rgba(74,157,110,0.3)', padding: spacing.sm },
+  selectedText: { fontSize: 13, color: '#e8eaed' },
+  entityRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#1e2433', borderRadius: borderRadius.sm, borderWidth: 1, borderColor: '#2a3142', paddingVertical: 8, paddingHorizontal: 10 },
   entityRowSel: { borderColor: 'rgba(74,157,110,0.5)' },
   entityDot: { width: 8, height: 8, borderRadius: 4 },
-  entityName: { fontSize: 12, fontWeight: '500', color: colors.foreground },
-  entityDetail: { fontSize: 11, color: colors.mutedForeground },
+  entityName: { fontSize: 12, fontWeight: '500', color: '#e8eaed' },
+  entityDetail: { fontSize: 11, color: '#8b919e' },
   entityX: { fontSize: 18, color: '#ef4444', fontWeight: '400', paddingHorizontal: 4 },
-  emptyText: { fontSize: 11, color: colors.mutedForeground, fontStyle: 'italic', paddingVertical: spacing.sm },
+  emptyText: { fontSize: 11, color: '#8b919e', fontStyle: 'italic', paddingVertical: spacing.sm },
 });

@@ -30,7 +30,8 @@ import {
   warmUpBackend,
 } from '../../src/lib/api';
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
-import { borderRadius, colors, spacing } from '../../src/theme/colors';
+import { borderRadius, spacing } from '../../src/theme/colors';
+import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
 
 
@@ -39,6 +40,7 @@ const DRILLS_PER_PAGE = 20;
 export default function LibraryScreen() {
   // Filter options from Supabase
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const [categories, setCategories] = useState<string[]>([]);
   const [ageGroups, setAgeGroups] = useState<string[]>([]);
   const durations = ['10 min.', '15 min.', '20 min.', '30 min.'];
@@ -217,7 +219,7 @@ export default function LibraryScreen() {
     if (isLoading) {
       return (
         <View style={styles.centered}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={tc.primary} />
           <Text style={styles.loadingText}>Loading drills...</Text>
         </View>
       );
@@ -237,7 +239,7 @@ export default function LibraryScreen() {
     return (
       <View style={styles.centered}>
         <View style={styles.emptyIcon}>
-          <Library size={32} color={colors.mutedForeground} />
+          <Library size={32} color={tc.mutedForeground} />
         </View>
         <Text style={styles.emptyTitle}>No drills found</Text>
         <Text style={styles.emptySubtitle}>
@@ -301,14 +303,14 @@ export default function LibraryScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={tc.background} />
 
       {/* Header lives outside FlatList so TextInput focus is never lost */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View style={styles.logoContainer}>
-            <Library size={20} color={colors.primaryForeground} />
+            <Library size={20} color={tc.primaryForeground} />
           </View>
           <Text style={styles.title}>Drill Library</Text>
         </View>
@@ -328,13 +330,13 @@ export default function LibraryScreen() {
               style={[styles.toggleButton, gridCols === 1 && styles.toggleButtonActive]}
               onPress={() => setGridCols(1)}
             >
-              <LayoutList size={14} color={gridCols === 1 ? colors.primaryForeground : colors.mutedForeground} />
+              <LayoutList size={14} color={gridCols === 1 ? tc.primaryForeground : tc.mutedForeground} />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.toggleButton, gridCols === 2 && styles.toggleButtonActive]}
               onPress={() => setGridCols(2)}
             >
-              <LayoutGrid size={14} color={gridCols === 2 ? colors.primaryForeground : colors.mutedForeground} />
+              <LayoutGrid size={14} color={gridCols === 2 ? tc.primaryForeground : tc.mutedForeground} />
             </TouchableOpacity>
           </View>
         </View>
@@ -366,8 +368,8 @@ export default function LibraryScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            tintColor={colors.primary}
-            colors={[colors.primary]}
+            tintColor={tc.primary}
+            colors={[tc.primary]}
           />
         }
         showsVerticalScrollIndicator={false}
@@ -376,7 +378,7 @@ export default function LibraryScreen() {
       {/* Loading overlay for drill details */}
       {isLoadingDrill && (
         <View style={styles.loadingOverlay}>
-          <ActivityIndicator size="large" color={colors.primary} />
+          <ActivityIndicator size="large" color={tc.primary} />
           <Text style={styles.loadingOverlayText}>Loading drill details...</Text>
         </View>
       )}
@@ -409,14 +411,14 @@ export default function LibraryScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#151823',
   },
   header: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#2a3142',
   },
   titleRow: {
     flexDirection: 'row',
@@ -428,14 +430,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.primary,
+    backgroundColor: '#4a9d6e',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.foreground,
+    color: '#e8eaed',
   },
   viewToggleRow: {
     flexDirection: 'row',
@@ -450,15 +452,15 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: borderRadius.sm,
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     justifyContent: 'center',
     alignItems: 'center',
   },
   toggleButtonActive: {
-    backgroundColor: colors.primary,
-    borderColor: colors.primary,
+    backgroundColor: '#4a9d6e',
+    borderColor: '#4a9d6e',
   },
   gridItem: {
     flex: 1,
@@ -476,26 +478,26 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl * 3,
   },
   loadingText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 14,
     marginTop: spacing.md,
   },
   errorText: {
-    color: colors.destructive,
+    color: '#dc2626',
     fontSize: 14,
     textAlign: 'center',
     marginBottom: spacing.md,
   },
   retryButton: {
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
   },
   retryText: {
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -503,33 +505,33 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,
   },
   emptyTitle: {
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 18,
     fontWeight: '600',
     marginBottom: spacing.xs,
   },
   emptySubtitle: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 14,
     textAlign: 'center',
   },
   clearFiltersButton: {
     marginTop: spacing.md,
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
   },
   clearFiltersText: {
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -541,26 +543,26 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.lg,
   },
   pageButton: {
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
   },
   pageButtonDisabled: {
     opacity: 0.4,
   },
   pageButtonText: {
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 13,
     fontWeight: '500',
   },
   pageButtonTextDisabled: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
   },
   pageInfo: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 13,
   },
   loadingOverlay: {
@@ -571,7 +573,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   loadingOverlayText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 14,
     marginTop: spacing.md,
   },

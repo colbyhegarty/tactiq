@@ -11,7 +11,8 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
-import { borderRadius, colors, spacing } from '../theme/colors';
+import { borderRadius, spacing } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { Drill } from '../types/drill';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -34,6 +35,7 @@ export function DrillCard({
   compact = false,
   onQuickView,
 }: DrillCardProps) {
+  const { colors: tc } = useTheme();
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
 
@@ -47,7 +49,7 @@ export function DrillCard({
   }));
 
   const titleAnimStyle = useAnimatedStyle(() => ({
-    color: titleColorActive.value > 0.5 ? colors.primary : colors.foreground,
+    color: titleColorActive.value > 0.5 ? tc.primary : tc.foreground,
   }));
 
   const [showOverlay, setShowOverlay] = useState(false);
@@ -88,7 +90,7 @@ export function DrillCard({
               />
               {imageLoading && (
                 <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={tc.primary} />
                 </View>
               )}
             </>
@@ -104,9 +106,9 @@ export function DrillCard({
             onPress={(e) => { e.stopPropagation?.(); onSave?.(drill); }}
           >
             {isSaved ? (
-              <BookmarkCheck size={compact ? 14 : 16} color={colors.primaryForeground} fill={colors.primaryForeground} />
+              <BookmarkCheck size={compact ? 14 : 16} color={tc.primaryForeground} fill={tc.primaryForeground} />
             ) : (
-              <Bookmark size={compact ? 14 : 16} color={colors.mutedForeground} />
+              <Bookmark size={compact ? 14 : 16} color={tc.mutedForeground} />
             )}
           </TouchableOpacity>
 
@@ -179,7 +181,7 @@ export function DrillCard({
         <View style={styles.meta}>
           {drill.player_count != null && (
             <View style={styles.metaItem}>
-              <Users size={12} color={colors.mutedForeground} />
+              <Users size={12} color={tc.mutedForeground} />
               <Text style={styles.metaText}>
                 {drill.player_count_display || `${drill.player_count}+`}
               </Text>
@@ -187,13 +189,13 @@ export function DrillCard({
           )}
           {drill.duration != null && (
             <View style={styles.metaItem}>
-              <Clock size={12} color={colors.mutedForeground} />
+              <Clock size={12} color={tc.mutedForeground} />
               <Text style={styles.metaText}>{drill.duration} min</Text>
             </View>
           )}
           {!compact && drill.age_group && (
             <View style={styles.metaItem}>
-              <Target size={12} color={colors.mutedForeground} />
+              <Target size={12} color={tc.mutedForeground} />
               <Text style={styles.metaText}>{drill.age_group}</Text>
             </View>
           )}
@@ -205,10 +207,10 @@ export function DrillCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     marginHorizontal: CARD_MARGIN,
     marginVertical: spacing.sm,
     overflow: 'hidden',
@@ -220,7 +222,7 @@ const styles = StyleSheet.create({
   },
   imageContainer: {
     aspectRatio: 4 / 3,
-    backgroundColor: colors.fieldDark,
+    backgroundColor: '#63b043',
     position: 'relative',
   },
   image: {
@@ -239,7 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 14,
   },
   bookmarkButton: {
@@ -254,7 +256,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bookmarkButtonSaved: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#4a9d6e',
   },
   animatedBadge: {
     position: 'absolute',
@@ -262,18 +264,18 @@ const styles = StyleSheet.create({
     right: spacing.sm,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.accent,
+    backgroundColor: '#d4a641',
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.xs,
     borderRadius: borderRadius.full,
     gap: 4,
   },
   animatedDot: {
-    color: colors.accentForeground,
+    color: '#151823',
     fontSize: 8,
   },
   animatedText: {
-    color: colors.accentForeground,
+    color: '#151823',
     fontSize: 11,
     fontWeight: '500',
   },
@@ -285,7 +287,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   title: {
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: spacing.sm,
@@ -310,7 +312,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   description: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 13,
     lineHeight: 18,
     marginBottom: spacing.sm,
@@ -326,7 +328,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 11,
   },
   overlay: {
@@ -345,12 +347,12 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   overlayBtnWhiteText: {
-    color: colors.primary,
+    color: '#4a9d6e',
     fontSize: 13,
     fontWeight: '600',
   },
   overlayBtnGreen: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#4a9d6e',
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,

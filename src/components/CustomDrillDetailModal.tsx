@@ -29,7 +29,8 @@ import {
 } from 'lucide-react-native';
 import { CustomDrill } from '../types/customDrill';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
-import { colors, borderRadius, spacing } from '../theme/colors';
+import { borderRadius, spacing } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { FIELD_COLORS } from '../types/customDrill';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -49,6 +50,7 @@ export function CustomDrillDetailModal({
   onClose,
   onEdit,
 }: CustomDrillDetailModalProps) {
+  const { colors: tc } = useTheme();
   const [activeTab, setActiveTab] = useState<TabKey>('setup');
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
@@ -158,7 +160,7 @@ export function CustomDrillDetailModal({
 
           {/* Close Button */}
           <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <X size={24} color={colors.foreground} />
+            <X size={24} color={tc.foreground} />
           </TouchableOpacity>
 
           <ScrollView
@@ -205,7 +207,7 @@ export function CustomDrillDetailModal({
             <View style={styles.badgesRow}>
               {formData.playerCount ? (
                 <View style={styles.badgeOutline}>
-                  <Users size={12} color={colors.mutedForeground} />
+                  <Users size={12} color={tc.mutedForeground} />
                   <Text style={styles.badgeOutlineText}>
                     {formData.playerCount} players
                   </Text>
@@ -213,7 +215,7 @@ export function CustomDrillDetailModal({
               ) : null}
               {formData.duration ? (
                 <View style={styles.badgeOutline}>
-                  <Clock size={12} color={colors.mutedForeground} />
+                  <Clock size={12} color={tc.mutedForeground} />
                   <Text style={styles.badgeOutlineText}>
                     {formData.duration}
                   </Text>
@@ -221,7 +223,7 @@ export function CustomDrillDetailModal({
               ) : null}
               {formData.ageGroup ? (
                 <View style={styles.badgeOutline}>
-                  <GraduationCap size={12} color={colors.mutedForeground} />
+                  <GraduationCap size={12} color={tc.mutedForeground} />
                   <Text style={styles.badgeOutlineText}>
                     {formData.ageGroup}
                   </Text>
@@ -292,8 +294,8 @@ export function CustomDrillDetailModal({
                         size={16}
                         color={
                           activeTab === 'setup'
-                            ? colors.foreground
-                            : colors.mutedForeground
+                            ? tc.foreground
+                            : tc.mutedForeground
                         }
                       />
                     </TouchableOpacity>
@@ -310,8 +312,8 @@ export function CustomDrillDetailModal({
                         size={16}
                         color={
                           activeTab === 'instructions'
-                            ? colors.foreground
-                            : colors.mutedForeground
+                            ? tc.foreground
+                            : tc.mutedForeground
                         }
                       />
                     </TouchableOpacity>
@@ -328,8 +330,8 @@ export function CustomDrillDetailModal({
                         size={16}
                         color={
                           activeTab === 'variations'
-                            ? colors.foreground
-                            : colors.mutedForeground
+                            ? tc.foreground
+                            : tc.mutedForeground
                         }
                       />
                     </TouchableOpacity>
@@ -346,8 +348,8 @@ export function CustomDrillDetailModal({
                         size={16}
                         color={
                           activeTab === 'coaching'
-                            ? colors.foreground
-                            : colors.mutedForeground
+                            ? tc.foreground
+                            : tc.mutedForeground
                         }
                       />
                     </TouchableOpacity>
@@ -365,7 +367,7 @@ export function CustomDrillDetailModal({
                   style={styles.actionButtonOutline}
                   onPress={() => onEdit(drill)}
                 >
-                  <Edit size={18} color={colors.primary} />
+                  <Edit size={18} color={tc.primary} />
                   <Text style={styles.actionButtonOutlineText}>Edit Drill</Text>
                 </TouchableOpacity>
               </View>
@@ -387,7 +389,7 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modal: {
-    backgroundColor: colors.background,
+    backgroundColor: '#151823',
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     maxHeight: SCREEN_HEIGHT * 0.92,
@@ -400,7 +402,7 @@ const styles = StyleSheet.create({
   handle: {
     width: 40,
     height: 4,
-    backgroundColor: colors.border,
+    backgroundColor: '#2a3142',
     borderRadius: 2,
   },
   closeButton: {
@@ -410,7 +412,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 10,
@@ -424,7 +426,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '700',
-    color: colors.foreground,
+    color: '#e8eaed',
     marginBottom: spacing.md,
     paddingRight: 50,
   },
@@ -451,11 +453,11 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
   },
   badgeOutlineText: {
     fontSize: 11,
-    color: colors.mutedForeground,
+    color: '#8b919e',
   },
   diagramSection: {
     marginTop: spacing.md,
@@ -463,11 +465,11 @@ const styles = StyleSheet.create({
   },
   diagramContainer: {
     aspectRatio: 4 / 3,
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
   },
   fieldBg: {
     flex: 1,
@@ -507,17 +509,17 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: colors.foreground,
+    color: '#e8eaed',
   },
   overviewText: {
     fontSize: 14,
     lineHeight: 22,
-    color: colors.mutedForeground,
+    color: '#8b919e',
   },
   tabbedSection: { marginBottom: spacing.lg },
   tabsHeader: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.md,
     padding: 4,
     marginBottom: spacing.md,
@@ -528,13 +530,13 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
     borderRadius: borderRadius.sm,
   },
-  tabActive: { backgroundColor: colors.background },
+  tabActive: { backgroundColor: '#151823' },
   tabContent: {
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.lg,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
   },
   bulletItem: {
     flexDirection: 'row',
@@ -542,7 +544,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   bulletPoint: {
-    color: colors.primary,
+    color: '#4a9d6e',
     fontSize: 12,
     marginTop: 2,
   },
@@ -550,12 +552,12 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     lineHeight: 22,
-    color: colors.foreground,
+    color: '#e8eaed',
   },
   paragraphText: {
     fontSize: 14,
     lineHeight: 22,
-    color: colors.foreground,
+    color: '#e8eaed',
     marginBottom: spacing.sm,
   },
   actionButtons: {
@@ -571,11 +573,11 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.primary,
+    borderColor: '#4a9d6e',
   },
   actionButtonOutlineText: {
     fontSize: 14,
     fontWeight: '600',
-    color: colors.primary,
+    color: '#4a9d6e',
   },
 });

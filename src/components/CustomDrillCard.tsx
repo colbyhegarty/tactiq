@@ -9,7 +9,8 @@ import {
 import { Edit, Trash2, Clock, Users, Target } from 'lucide-react-native';
 import { CustomDrill, DiagramData } from '../types/customDrill';
 import { getDifficultyColor, getCategoryColor } from '../lib/api';
-import { colors, borderRadius, spacing } from '../theme/colors';
+import { borderRadius, spacing } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { DrillDiagramView } from './DrillDiagramView';
 import { convertToDrillJson } from '../lib/drillConverter';
 
@@ -28,6 +29,7 @@ export function CustomDrillCard({
   onDelete,
   compact = false,
 }: CustomDrillCardProps) {
+  const { colors: tc } = useTheme();
   const { formData } = drill;
   const categoryColor = getCategoryColor(formData.category);
   const difficultyColor = getDifficultyColor(formData.difficulty);
@@ -125,7 +127,7 @@ export function CustomDrillCard({
         <View style={styles.meta}>
           {(formData.playerCount || playerCount) ? (
             <View style={styles.metaItem}>
-              <Users size={12} color={colors.mutedForeground} />
+              <Users size={12} color={tc.mutedForeground} />
               <Text style={styles.metaText}>
                 {formData.playerCount || playerCount}
               </Text>
@@ -133,13 +135,13 @@ export function CustomDrillCard({
           ) : null}
           {formData.duration ? (
             <View style={styles.metaItem}>
-              <Clock size={12} color={colors.mutedForeground} />
+              <Clock size={12} color={tc.mutedForeground} />
               <Text style={styles.metaText}>{formData.duration}</Text>
             </View>
           ) : null}
           {formData.ageGroup ? (
             <View style={styles.metaItem}>
-              <Target size={12} color={colors.mutedForeground} />
+              <Target size={12} color={tc.mutedForeground} />
               <Text style={styles.metaText}>{formData.ageGroup}</Text>
             </View>
           ) : null}
@@ -158,7 +160,7 @@ export function CustomDrillCard({
               onPress={() => onEdit(drill)}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
-              <Edit size={14} color={colors.mutedForeground} />
+              <Edit size={14} color={tc.mutedForeground} />
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -166,7 +168,7 @@ export function CustomDrillCard({
             onPress={handleDelete}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Trash2 size={14} color={colors.destructive} />
+            <Trash2 size={14} color={tc.destructive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -176,10 +178,10 @@ export function CustomDrillCard({
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     marginHorizontal: spacing.md,
     marginVertical: spacing.sm,
     overflow: 'hidden',
@@ -216,7 +218,7 @@ const styles = StyleSheet.create({
     padding: spacing.sm,
   },
   title: {
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 16,
     fontWeight: '600',
     marginBottom: spacing.sm,
@@ -241,7 +243,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   description: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 13,
     lineHeight: 18,
     marginBottom: spacing.sm,
@@ -257,7 +259,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   metaText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 11,
   },
   footer: {
@@ -267,10 +269,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.border,
+    borderTopColor: '#2a3142',
   },
   dateText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 11,
   },
   footerActions: {

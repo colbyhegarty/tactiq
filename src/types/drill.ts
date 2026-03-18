@@ -148,6 +148,18 @@ export type FieldSize =
   | 'Medium Grid (20x20 to 40x40)'
   | 'Any/Flexible';
 
+export interface PdfSettings {
+  includeDiagram: boolean;
+  includeSetup: boolean;
+  includeInstructions: boolean;
+}
+
+export const defaultPdfSettings: PdfSettings = {
+  includeDiagram: true,
+  includeSetup: true,
+  includeInstructions: true,
+};
+
 export interface UserProfile {
   name: string;
   email: string;
@@ -156,4 +168,5 @@ export interface UserProfile {
   defaultSkillLevel: SkillLevel;
   defaultPlayerCount: number;
   avatarUrl?: string;
+  pdfSettings?: PdfSettings;
 }

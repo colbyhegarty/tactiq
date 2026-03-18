@@ -23,7 +23,8 @@ import {
 } from 'react-native';
 import Animated, { runOnJS, useAnimatedStyle, useSharedValue, withSpring, withTiming } from 'react-native-reanimated';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
-import { borderRadius, colors, spacing } from '../theme/colors';
+import { borderRadius, spacing } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 import { Drill } from '../types/drill';
 import { DrillDiagramView } from './DrillDiagramView';
 
@@ -41,6 +42,7 @@ interface DrillDetailModalProps {
 type TabKey = 'setup' | 'instructions' | 'variations' | 'coaching';
 
 export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSave, onUseAsTemplate }: DrillDetailModalProps) {
+  const { colors: tc } = useTheme();
   const [viewMode, setViewMode] = useState<'static' | 'animated'>('animated');
   const [activeTab, setActiveTab] = useState<TabKey>('setup');
   const translateY = useSharedValue(SCREEN_HEIGHT);
@@ -106,7 +108,7 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
       <Animated.View style={[s.modalContainer, modalStyle]}>
         <View style={s.modal}>
           <View style={s.handleContainer}><View style={s.handle} /></View>
-          <TouchableOpacity style={s.closeButton} onPress={handleClose}><X size={24} color={colors.foreground} /></TouchableOpacity>
+          <TouchableOpacity style={s.closeButton} onPress={handleClose}><X size={24} color={tc.foreground} /></TouchableOpacity>
 
           <ScrollView style={s.scrollView} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
             {/* Title */}
@@ -116,12 +118,12 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
             <View style={s.badgesRow}>
               {drill.category && <View style={[s.badge, { backgroundColor: categoryColor.bg }]}><Text style={[s.badgeText, { color: categoryColor.text }]}>{drill.category.toUpperCase()}</Text></View>}
               {drill.difficulty && <View style={[s.badge, { backgroundColor: difficultyColor.bg }]}><Text style={[s.badgeText, { color: difficultyColor.text }]}>{drill.difficulty.toUpperCase()}</Text></View>}
-              {drill.has_animation && <View style={s.badgeOutline}><Play size={12} color={colors.mutedForeground} /><Text style={s.badgeOutlineText}>Animated</Text></View>}
-              {drill.player_count != null && <View style={s.badgeOutline}><Users size={12} color={colors.mutedForeground} /><Text style={s.badgeOutlineText}>{drill.player_count_display || `${drill.player_count}+`} players</Text></View>}
+              {drill.has_animation && <View style={s.badgeOutline}><Play size={12} color={tc.mutedForeground} /><Text style={s.badgeOutlineText}>Animated</Text></View>}
+              {drill.player_count != null && <View style={s.badgeOutline}><Users size={12} color={tc.mutedForeground} /><Text style={s.badgeOutlineText}>{drill.player_count_display || `${drill.player_count}+`} players</Text></View>}
             </View>
             <View style={s.badgesRow}>
-              {drill.duration != null && <View style={s.badgeOutline}><Clock size={12} color={colors.mutedForeground} /><Text style={s.badgeOutlineText}>{drill.duration} min</Text></View>}
-              {drill.age_group && <View style={s.badgeOutline}><GraduationCap size={12} color={colors.mutedForeground} /><Text style={s.badgeOutlineText}>{drill.age_group}</Text></View>}
+              {drill.duration != null && <View style={s.badgeOutline}><Clock size={12} color={tc.mutedForeground} /><Text style={s.badgeOutlineText}>{drill.duration} min</Text></View>}
+              {drill.age_group && <View style={s.badgeOutline}><GraduationCap size={12} color={tc.mutedForeground} /><Text style={s.badgeOutlineText}>{drill.age_group}</Text></View>}
             </View>
 
             {/* Diagram Section */}
@@ -130,11 +132,11 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
               {hasAnimation && (
                 <View style={s.toggleContainer}>
                   <TouchableOpacity style={[s.toggleButton, viewMode === 'static' && s.toggleButtonActive]} onPress={() => setViewMode('static')}>
-                    <ImageIcon size={16} color={viewMode === 'static' ? colors.primaryForeground : colors.mutedForeground} />
+                    <ImageIcon size={16} color={viewMode === 'static' ? tc.primaryForeground : tc.mutedForeground} />
                     <Text style={[s.toggleText, viewMode === 'static' && s.toggleTextActive]}>Static</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={[s.toggleButton, viewMode === 'animated' && s.toggleButtonActive]} onPress={() => setViewMode('animated')}>
-                    <Film size={16} color={viewMode === 'animated' ? colors.primaryForeground : colors.mutedForeground} />
+                    <Film size={16} color={viewMode === 'animated' ? tc.primaryForeground : tc.mutedForeground} />
                     <Text style={[s.toggleText, viewMode === 'animated' && s.toggleTextActive]}>Animated</Text>
                   </TouchableOpacity>
                 </View>
@@ -168,10 +170,10 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
             {hasAnyContent && (
               <View style={s.tabbedSection}>
                 <View style={s.tabsHeader}>
-                  {hasSetup && <TouchableOpacity style={[s.tab, activeTab === 'setup' && s.tabActive]} onPress={() => setActiveTab('setup')}><ClipboardList size={16} color={activeTab === 'setup' ? colors.foreground : colors.mutedForeground} /></TouchableOpacity>}
-                  {hasInstructions && <TouchableOpacity style={[s.tab, activeTab === 'instructions' && s.tabActive]} onPress={() => setActiveTab('instructions')}><Play size={16} color={activeTab === 'instructions' ? colors.foreground : colors.mutedForeground} /></TouchableOpacity>}
-                  {hasVariations && <TouchableOpacity style={[s.tab, activeTab === 'variations' && s.tabActive]} onPress={() => setActiveTab('variations')}><RefreshCw size={16} color={activeTab === 'variations' ? colors.foreground : colors.mutedForeground} /></TouchableOpacity>}
-                  {hasCoachingPoints && <TouchableOpacity style={[s.tab, activeTab === 'coaching' && s.tabActive]} onPress={() => setActiveTab('coaching')}><Lightbulb size={16} color={activeTab === 'coaching' ? colors.foreground : colors.mutedForeground} /></TouchableOpacity>}
+                  {hasSetup && <TouchableOpacity style={[s.tab, activeTab === 'setup' && s.tabActive]} onPress={() => setActiveTab('setup')}><ClipboardList size={16} color={activeTab === 'setup' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
+                  {hasInstructions && <TouchableOpacity style={[s.tab, activeTab === 'instructions' && s.tabActive]} onPress={() => setActiveTab('instructions')}><Play size={16} color={activeTab === 'instructions' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
+                  {hasVariations && <TouchableOpacity style={[s.tab, activeTab === 'variations' && s.tabActive]} onPress={() => setActiveTab('variations')}><RefreshCw size={16} color={activeTab === 'variations' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
+                  {hasCoachingPoints && <TouchableOpacity style={[s.tab, activeTab === 'coaching' && s.tabActive]} onPress={() => setActiveTab('coaching')}><Lightbulb size={16} color={activeTab === 'coaching' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
                 </View>
                 <View style={s.tabContent}>{getTabContent()}</View>
               </View>
@@ -180,12 +182,12 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
             {/* Actions */}
             <View style={s.actionButtons}>
               <TouchableOpacity style={[s.actionButton, isSaved && s.actionButtonSecondary]} onPress={() => onSave?.(drill)}>
-                {isSaved ? <BookmarkCheck size={18} color={colors.foreground} /> : <Bookmark size={18} color={colors.primaryForeground} />}
+                {isSaved ? <BookmarkCheck size={18} color={tc.foreground} /> : <Bookmark size={18} color={tc.primaryForeground} />}
                 <Text style={[s.actionButtonText, isSaved && s.actionButtonTextSecondary]}>{isSaved ? 'Saved' : 'Save to My Drills'}</Text>
               </TouchableOpacity>
               {onUseAsTemplate && (
                 <TouchableOpacity style={s.actionButtonOutline} onPress={() => onUseAsTemplate(drill)}>
-                  <Sparkles size={18} color={colors.primary} />
+                  <Sparkles size={18} color={tc.primary} />
                   <Text style={s.actionButtonOutlineText}>Use as Template</Text>
                 </TouchableOpacity>
               )}
@@ -200,47 +202,47 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
 const s = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' },
   modalContainer: { flex: 1, justifyContent: 'flex-end' },
-  modal: { backgroundColor: colors.background, borderTopLeftRadius: 0, borderTopRightRadius: 0, maxHeight: SCREEN_HEIGHT, minHeight: SCREEN_HEIGHT },
+  modal: { backgroundColor: '#151823', borderTopLeftRadius: 0, borderTopRightRadius: 0, maxHeight: SCREEN_HEIGHT, minHeight: SCREEN_HEIGHT },
   handleContainer: { alignItems: 'center', paddingVertical: spacing.sm },
-  handle: { width: 40, height: 4, backgroundColor: colors.border, borderRadius: 2 },
-  closeButton: { position: 'absolute', top: spacing.md, right: spacing.md, width: 40, height: 40, borderRadius: 20, backgroundColor: colors.card, justifyContent: 'center', alignItems: 'center', zIndex: 10 },
+  handle: { width: 40, height: 4, backgroundColor: '#2a3142', borderRadius: 2 },
+  closeButton: { position: 'absolute', top: spacing.md, right: spacing.md, width: 40, height: 40, borderRadius: 20, backgroundColor: '#1e2433', justifyContent: 'center', alignItems: 'center', zIndex: 10 },
   scrollView: { flex: 1 },
   scrollContent: { padding: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xl + 40 },
-  title: { fontSize: 24, fontWeight: '700', color: colors.foreground, marginBottom: spacing.md, paddingRight: 50 },
+  title: { fontSize: 24, fontWeight: '700', color: '#e8eaed', marginBottom: spacing.md, paddingRight: 50 },
   badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginBottom: spacing.sm },
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: borderRadius.full },
   badgeText: { fontSize: 11, fontWeight: '600' },
-  badgeOutline: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.full, borderWidth: 1, borderColor: colors.border },
-  badgeOutlineText: { fontSize: 11, color: colors.mutedForeground },
+  badgeOutline: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.full, borderWidth: 1, borderColor: '#2a3142' },
+  badgeOutlineText: { fontSize: 11, color: '#8b919e' },
   diagramSection: { marginTop: spacing.md, marginBottom: spacing.lg },
-  toggleContainer: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: borderRadius.md, padding: 4, marginBottom: spacing.md, alignSelf: 'center' },
+  toggleContainer: { flexDirection: 'row', backgroundColor: '#1e2433', borderRadius: borderRadius.md, padding: 4, marginBottom: spacing.md, alignSelf: 'center' },
   toggleButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: spacing.sm, borderRadius: borderRadius.sm },
-  toggleButtonActive: { backgroundColor: colors.primary },
-  toggleText: { fontSize: 13, color: colors.mutedForeground, fontWeight: '500' },
-  toggleTextActive: { color: colors.primaryForeground },
-  diagramContainer: { aspectRatio: 4 / 3, backgroundColor: colors.card, borderRadius: borderRadius.lg, overflow: 'hidden', borderWidth: 1, borderColor: colors.border },
+  toggleButtonActive: { backgroundColor: '#4a9d6e' },
+  toggleText: { fontSize: 13, color: '#8b919e', fontWeight: '500' },
+  toggleTextActive: { color: '#ffffff' },
+  diagramContainer: { aspectRatio: 4 / 3, backgroundColor: '#1e2433', borderRadius: borderRadius.lg, overflow: 'hidden', borderWidth: 1, borderColor: '#2a3142' },
   diagramImage: { width: '100%', height: '100%' },
-  diagramPlaceholder: { height: 200, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.card, borderRadius: borderRadius.lg },
-  diagramPlaceholderText: { color: colors.mutedForeground, fontSize: 14 },
+  diagramPlaceholder: { height: 200, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1e2433', borderRadius: borderRadius.lg },
+  diagramPlaceholderText: { color: '#8b919e', fontSize: 14 },
   overviewSection: { backgroundColor: 'rgba(74, 157, 110, 0.08)', borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.lg, borderWidth: 1, borderColor: 'rgba(74, 157, 110, 0.15)' },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   sectionIcon: { fontSize: 16 },
-  sectionTitle: { fontSize: 16, fontWeight: '600', color: colors.foreground },
-  overviewText: { fontSize: 14, lineHeight: 22, color: colors.mutedForeground },
+  sectionTitle: { fontSize: 16, fontWeight: '600', color: '#e8eaed' },
+  overviewText: { fontSize: 14, lineHeight: 22, color: '#8b919e' },
   tabbedSection: { marginBottom: spacing.lg },
-  tabsHeader: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: borderRadius.md, padding: 4, marginBottom: spacing.md },
+  tabsHeader: { flexDirection: 'row', backgroundColor: '#1e2433', borderRadius: borderRadius.md, padding: 4, marginBottom: spacing.md },
   tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.sm },
-  tabActive: { backgroundColor: colors.background },
-  tabContent: { backgroundColor: colors.card, borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: colors.border },
+  tabActive: { backgroundColor: '#151823' },
+  tabContent: { backgroundColor: '#1e2433', borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: '#2a3142' },
   bulletItem: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
-  bulletPoint: { color: colors.primary, fontSize: 12, marginTop: 2 },
-  bulletText: { flex: 1, fontSize: 14, lineHeight: 22, color: colors.foreground },
-  paragraphText: { fontSize: 14, lineHeight: 22, color: colors.foreground, marginBottom: spacing.sm },
+  bulletPoint: { color: '#4a9d6e', fontSize: 12, marginTop: 2 },
+  bulletText: { flex: 1, fontSize: 14, lineHeight: 22, color: '#e8eaed' },
+  paragraphText: { fontSize: 14, lineHeight: 22, color: '#e8eaed', marginBottom: spacing.sm },
   actionButtons: { flexDirection: 'row', gap: spacing.md },
-  actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: colors.primary, paddingVertical: 14, borderRadius: borderRadius.md },
-  actionButtonSecondary: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
-  actionButtonText: { fontSize: 14, fontWeight: '600', color: colors.primaryForeground },
-  actionButtonTextSecondary: { color: colors.foreground },
-  actionButtonOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.primary },
-  actionButtonOutlineText: { fontSize: 14, fontWeight: '600', color: colors.primary },
+  actionButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: '#4a9d6e', paddingVertical: 14, borderRadius: borderRadius.md },
+  actionButtonSecondary: { backgroundColor: '#1e2433', borderWidth: 1, borderColor: '#2a3142' },
+  actionButtonText: { fontSize: 14, fontWeight: '600', color: '#ffffff' },
+  actionButtonTextSecondary: { color: '#e8eaed' },
+  actionButtonOutline: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 14, borderRadius: borderRadius.md, borderWidth: 1, borderColor: '#4a9d6e' },
+  actionButtonOutlineText: { fontSize: 14, fontWeight: '600', color: '#4a9d6e' },
 });

@@ -1,24 +1,25 @@
-import React, { useState, useEffect, useRef } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  LayoutAnimation,
-  Platform,
-  UIManager,
-} from 'react-native';
-import {
-  Search,
-  Filter,
-  X,
-  ChevronDown,
-  ChevronUp,
+    ChevronDown,
+    ChevronUp,
+    Filter,
+    Search,
+    X,
 } from 'lucide-react-native';
-import { DrillFilterParams, DIFFICULTIES, AGE_GROUP_CATEGORIES } from '../lib/api';
-import { colors, spacing, borderRadius } from '../theme/colors';
+import React, { useEffect, useRef, useState } from 'react';
+import {
+    LayoutAnimation,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    UIManager,
+    View,
+} from 'react-native';
+import { AGE_GROUP_CATEGORIES, DIFFICULTIES, DrillFilterParams } from '../lib/api';
+import { borderRadius, spacing } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -48,6 +49,7 @@ export function DrillFilters({
   resultCount,
   isLoading,
 }: DrillFiltersProps) {
+  const { colors: tc } = useTheme();
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
 
@@ -143,7 +145,7 @@ export function DrillFilters({
           </Text>
           <ChevronDown
             size={14}
-            color={colors.mutedForeground}
+            color={tc.mutedForeground}
             style={isOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
           />
         </TouchableOpacity>
@@ -187,18 +189,18 @@ export function DrillFilters({
     <View style={styles.container}>
       {/* Search Bar */}
       <View style={styles.searchContainer}>
-        <Search size={18} color={colors.mutedForeground} />
+        <Search size={18} color={tc.mutedForeground} />
         <TextInput
           style={styles.searchInput}
           placeholder="Search drills..."
-          placeholderTextColor={colors.mutedForeground}
+          placeholderTextColor={tc.mutedForeground}
           value={searchText}
           onChangeText={handleSearchChange}
           returnKeyType="search"
         />
         {searchText ? (
           <TouchableOpacity onPress={clearSearch}>
-            <X size={16} color={colors.mutedForeground} />
+            <X size={16} color={tc.mutedForeground} />
           </TouchableOpacity>
         ) : null}
       </View>
@@ -210,15 +212,15 @@ export function DrillFilters({
         activeOpacity={0.7}
       >
         <View style={styles.filtersToggleLeft}>
-          <Filter size={14} color={colors.primary} />
+          <Filter size={14} color={tc.primary} />
           <Text style={styles.filtersToggleText}>
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
           </Text>
         </View>
         {filtersOpen ? (
-          <ChevronUp size={14} color={colors.primary} />
+          <ChevronUp size={14} color={tc.primary} />
         ) : (
-          <ChevronDown size={14} color={colors.primary} />
+          <ChevronDown size={14} color={tc.primary} />
         )}
       </TouchableOpacity>
 
@@ -282,7 +284,7 @@ export function DrillFilters({
             <TextInput
               style={styles.playerCountInput}
               placeholder="Min"
-              placeholderTextColor={colors.mutedForeground}
+              placeholderTextColor={tc.mutedForeground}
               keyboardType="number-pad"
               value={filters.min_players?.toString() || ''}
               onChangeText={(text) =>
@@ -293,7 +295,7 @@ export function DrillFilters({
             <TextInput
               style={styles.playerCountInput}
               placeholder="Max"
-              placeholderTextColor={colors.mutedForeground}
+              placeholderTextColor={tc.mutedForeground}
               keyboardType="number-pad"
               value={filters.max_players?.toString() || ''}
               onChangeText={(text) =>
@@ -306,7 +308,7 @@ export function DrillFilters({
           {/* Clear button */}
           {hasActiveFilters && (
             <TouchableOpacity style={styles.clearButton} onPress={clearFilters}>
-              <X size={14} color={colors.mutedForeground} />
+              <X size={14} color={tc.mutedForeground} />
               <Text style={styles.clearButtonText}>Clear All</Text>
             </TouchableOpacity>
           )}
@@ -317,7 +319,7 @@ export function DrillFilters({
       {resultCount !== undefined && (
         <View style={styles.resultsRow}>
           <View style={styles.resultsCount}>
-            <Filter size={12} color={colors.mutedForeground} />
+            <Filter size={12} color={tc.mutedForeground} />
             <Text style={styles.resultsText}>
               {isLoading ? 'Searching...' : `${resultCount} drills found`}
             </Text>
@@ -335,32 +337,32 @@ const styles = StyleSheet.create({
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     paddingHorizontal: spacing.md,
     height: 44,
     gap: spacing.sm,
   },
   searchInput: {
     flex: 1,
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 15,
   },
   filtersToggle: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
   },
   filtersToggleOpen: {
-    borderColor: colors.primary,
+    borderColor: '#4a9d6e',
   },
   filtersToggleLeft: {
     flexDirection: 'row',
@@ -368,15 +370,15 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   filtersToggleText: {
-    color: colors.primary,
+    color: '#4a9d6e',
     fontSize: 13,
     fontWeight: '500',
   },
   filterControls: {
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     padding: spacing.md,
     gap: spacing.sm,
   },
@@ -392,30 +394,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: colors.background,
+    backgroundColor: '#151823',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     paddingHorizontal: spacing.sm,
     height: 36,
   },
   dropdownOpen: {
-    borderColor: colors.primary,
+    borderColor: '#4a9d6e',
   },
   dropdownText: {
     flex: 1,
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 12,
   },
   dropdownTextActive: {
-    color: colors.foreground,
+    color: '#e8eaed',
   },
   dropdownMenu: {
     position: 'relative',
-    backgroundColor: colors.card,
+    backgroundColor: '#1e2433',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     marginTop: 4,
     overflow: 'hidden',
   },
@@ -426,17 +428,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: '#2a3142',
   },
   dropdownOptionActive: {
-    backgroundColor: colors.primaryLight,
+    backgroundColor: 'rgba(74, 157, 110, 0.1)',
   },
   dropdownOptionText: {
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 12,
   },
   dropdownOptionTextActive: {
-    color: colors.primary,
+    color: '#4a9d6e',
     fontWeight: '600',
   },
   playerCountRow: {
@@ -447,21 +449,21 @@ const styles = StyleSheet.create({
   playerCountInput: {
     width: 60,
     height: 36,
-    backgroundColor: colors.background,
+    backgroundColor: '#151823',
     borderRadius: borderRadius.sm,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: '#2a3142',
     paddingHorizontal: spacing.sm,
-    color: colors.foreground,
+    color: '#e8eaed',
     fontSize: 12,
     textAlign: 'center',
   },
   playerCountDash: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 12,
   },
   playerCountLabel: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 12,
   },
   clearButton: {
@@ -474,7 +476,7 @@ const styles = StyleSheet.create({
     borderRadius: borderRadius.sm,
   },
   clearButtonText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 12,
   },
   resultsRow: {
@@ -488,7 +490,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   resultsText: {
-    color: colors.mutedForeground,
+    color: '#8b919e',
     fontSize: 12,
   },
 });

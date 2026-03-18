@@ -36,7 +36,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
 import { supabase } from '../src/lib/supabase';
-import { borderRadius, colors, spacing } from '../src/theme/colors';
+import { borderRadius, spacing } from '../src/theme/colors';
+import { useTheme } from '../src/theme/ThemeContext';
 import { EquipmentItem, Session, SessionActivity } from '../src/types/session';
 
 
@@ -53,6 +54,7 @@ function PickerModal({ visible, mode, value, onConfirm, onCancel }: {
   onConfirm: (date: Date) => void;
   onCancel: () => void;
 }) {
+  const { colors: tc } = useTheme();
   const [tempValue, setTempValue] = useState(value);
 
   useEffect(() => {
@@ -93,11 +95,11 @@ function PickerModal({ visible, mode, value, onConfirm, onCancel }: {
 
 const pk = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: colors.background, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingBottom: 30 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  title: { fontSize: 16, fontWeight: '600', color: colors.foreground },
-  cancelText: { fontSize: 15, color: colors.mutedForeground },
-  doneText: { fontSize: 15, fontWeight: '600', color: colors.primary },
+  modal: { backgroundColor: '#151823', borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, paddingBottom: 30 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: '#2a3142' },
+  title: { fontSize: 16, fontWeight: '600', color: '#e8eaed' },
+  cancelText: { fontSize: 15, color: '#8b919e' },
+  doneText: { fontSize: 15, fontWeight: '600', color: '#4a9d6e' },
   pickerContainer: { alignItems: 'center', overflow: 'hidden', paddingHorizontal: spacing.md },
   picker: { width: '100%' },
 });
@@ -116,6 +118,7 @@ interface DrillOption {
 }
 
 function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActivityModalProps) {
+  const { colors: tc } = useTheme();
   const [step, setStep] = useState<'choose' | 'library' | 'custom' | 'quick' | 'edit'>('choose');
   const [drills, setDrills] = useState<DrillOption[]>([]);
   const [customDrillOptions, setCustomDrillOptions] = useState<DrillOption[]>([]);
@@ -225,24 +228,24 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
             <Text style={ms.mTitle}>
               {editingActivity ? 'Edit Activity' : step === 'choose' ? 'Add Activity' : step === 'library' ? 'Drill Library' : step === 'quick' ? 'Quick Activity' : 'Edit Activity'}
             </Text>
-            <TouchableOpacity onPress={onClose}><X size={20} color={colors.foreground} /></TouchableOpacity>
+            <TouchableOpacity onPress={onClose}><X size={20} color={tc.foreground} /></TouchableOpacity>
           </View>
 
           <ScrollView style={ms.mBody} contentContainerStyle={{ paddingBottom: 20 }} keyboardShouldPersistTaps="handled">
             {step === 'choose' && (
               <View style={ms.chooseGrid}>
                 <TouchableOpacity style={ms.chooseCard} onPress={() => setStep('library')}>
-                  <Library size={24} color={colors.primary} />
+                  <Library size={24} color={tc.primary} />
                   <Text style={ms.chooseLabel}>From Library</Text>
                   <Text style={ms.chooseDesc}>Pick a drill from the library</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={ms.chooseCard} onPress={() => setStep('quick')}>
-                  <FileText size={24} color={colors.primary} />
+                  <FileText size={24} color={tc.primary} />
                   <Text style={ms.chooseLabel}>Quick Activity</Text>
                   <Text style={ms.chooseDesc}>Create a custom activity</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={ms.chooseCard} onPress={() => setStep('custom')}>
-                  <PenTool size={24} color={colors.primary} />
+                  <PenTool size={24} color={tc.primary} />
                   <Text style={ms.chooseLabel}>My Drills</Text>
                   <Text style={ms.chooseDesc}>Use a drill you created</Text>
                 </TouchableOpacity>
@@ -252,11 +255,11 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
             {step === 'library' && (
               <View style={{ gap: spacing.sm }}>
                 <View style={ms.searchRow}>
-                  <Search size={16} color={colors.mutedForeground} />
-                  <TextInput style={ms.searchInput} placeholder="Search drills..." placeholderTextColor={colors.mutedForeground} value={search} onChangeText={setSearch} />
+                  <Search size={16} color={tc.mutedForeground} />
+                  <TextInput style={ms.searchInput} placeholder="Search drills..." placeholderTextColor={tc.mutedForeground} value={search} onChangeText={setSearch} />
                 </View>
                 {loading ? (
-                  <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 40 }} />
+                  <ActivityIndicator size="large" color={tc.primary} style={{ marginTop: 40 }} />
                 ) : filtered.length === 0 ? (
                   <Text style={ms.emptyText}>No drills found</Text>
                 ) : (
@@ -285,7 +288,7 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
                     <Text style={ms.fieldLabel}>Duration (minutes)</Text>
                     <TextInput style={ms.fieldInput} value={duration} onChangeText={setDuration} keyboardType="number-pad" />
                     <Text style={ms.fieldLabel}>Notes (optional)</Text>
-                    <TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Coaching notes..." placeholderTextColor={colors.mutedForeground} multiline />
+                    <TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Coaching notes..." placeholderTextColor={tc.mutedForeground} multiline />
                   </View>
                 )}
               </View>
@@ -319,7 +322,7 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
                     <Text style={ms.fieldLabel}>Duration (minutes)</Text>
                     <TextInput style={ms.fieldInput} value={duration} onChangeText={setDuration} keyboardType="number-pad" />
                     <Text style={ms.fieldLabel}>Notes (optional)</Text>
-                    <TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Coaching notes..." placeholderTextColor={colors.mutedForeground} multiline />
+                    <TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Coaching notes..." placeholderTextColor={tc.mutedForeground} multiline />
                   </View>
                 )}
               </View>
@@ -327,10 +330,10 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
 
             {step === 'quick' && (
               <View style={{ gap: spacing.md }}>
-                <View><Text style={ms.fieldLabel}>Activity Title</Text><TextInput style={ms.fieldInput} value={quickTitle} onChangeText={setQuickTitle} placeholder="e.g., Warm-up, 4v4 Game" placeholderTextColor={colors.mutedForeground} /></View>
-                <View><Text style={ms.fieldLabel}>Description</Text><TextInput style={[ms.fieldInput, { height: 80 }]} value={quickDesc} onChangeText={setQuickDesc} placeholder="Describe the activity..." placeholderTextColor={colors.mutedForeground} multiline /></View>
+                <View><Text style={ms.fieldLabel}>Activity Title</Text><TextInput style={ms.fieldInput} value={quickTitle} onChangeText={setQuickTitle} placeholder="e.g., Warm-up, 4v4 Game" placeholderTextColor={tc.mutedForeground} /></View>
+                <View><Text style={ms.fieldLabel}>Description</Text><TextInput style={[ms.fieldInput, { height: 80 }]} value={quickDesc} onChangeText={setQuickDesc} placeholder="Describe the activity..." placeholderTextColor={tc.mutedForeground} multiline /></View>
                 <View><Text style={ms.fieldLabel}>Duration (minutes)</Text><TextInput style={[ms.fieldInput, { width: 100 }]} value={duration} onChangeText={setDuration} keyboardType="number-pad" /></View>
-                <View><Text style={ms.fieldLabel}>Notes (optional)</Text><TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Private coaching notes..." placeholderTextColor={colors.mutedForeground} multiline /></View>
+                <View><Text style={ms.fieldLabel}>Notes (optional)</Text><TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Private coaching notes..." placeholderTextColor={tc.mutedForeground} multiline /></View>
               </View>
             )}
 
@@ -341,7 +344,7 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
                   {editingActivity.drill_difficulty && <Text style={ms.editDrillMeta}>{editingActivity.drill_difficulty}</Text>}
                 </View>
                 <View><Text style={ms.fieldLabel}>Duration (minutes)</Text><TextInput style={[ms.fieldInput, { width: 100 }]} value={duration} onChangeText={setDuration} keyboardType="number-pad" /></View>
-                <View><Text style={ms.fieldLabel}>Notes (optional)</Text><TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Coaching notes..." placeholderTextColor={colors.mutedForeground} multiline /></View>
+                <View><Text style={ms.fieldLabel}>Notes (optional)</Text><TextInput style={[ms.fieldInput, { height: 60 }]} value={notes} onChangeText={setNotes} placeholder="Coaching notes..." placeholderTextColor={tc.mutedForeground} multiline /></View>
               </View>
             )}
           </ScrollView>
@@ -369,6 +372,7 @@ function ActivityCard({ activity, index, startTime, onMoveUp, onMoveDown, onEdit
   onMoveUp: () => void; onMoveDown: () => void; onEdit: () => void; onDelete: () => void;
   isFirst: boolean; isLast: boolean;
 }) {
+  const { colors: tc } = useTheme();
   const title = activity.title || activity.drill_name || 'Untitled';
   const formatMin = (m: number) => { const h = Math.floor(m / 60); const mm = m % 60; return `${h}:${mm.toString().padStart(2, '0')}`; };
 
@@ -382,23 +386,23 @@ function ActivityCard({ activity, index, startTime, onMoveUp, onMoveDown, onEdit
         <View style={ac.info}>
           <Text style={ac.title} numberOfLines={1}>{title}</Text>
           <View style={ac.metaRow}>
-            <Clock size={12} color={colors.mutedForeground} />
+            <Clock size={12} color={tc.mutedForeground} />
             <Text style={ac.meta}>{activity.duration_minutes} min</Text>
             {activity.drill_difficulty && <Text style={ac.meta}>· {activity.drill_difficulty}</Text>}
           </View>
         </View>
         <View style={ac.actions}>
           <TouchableOpacity onPress={onMoveUp} disabled={isFirst} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-            <ChevronUp size={18} color={isFirst ? colors.border : colors.mutedForeground} />
+            <ChevronUp size={18} color={isFirst ? tc.border : tc.mutedForeground} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onMoveDown} disabled={isLast} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-            <ChevronDown size={18} color={isLast ? colors.border : colors.mutedForeground} />
+            <ChevronDown size={18} color={isLast ? tc.border : tc.mutedForeground} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onEdit} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-            <Pencil size={14} color={colors.mutedForeground} />
+            <Pencil size={14} color={tc.mutedForeground} />
           </TouchableOpacity>
           <TouchableOpacity onPress={onDelete} hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}>
-            <Trash2 size={14} color={colors.destructive} />
+            <Trash2 size={14} color={tc.destructive} />
           </TouchableOpacity>
         </View>
       </View>
@@ -409,7 +413,7 @@ function ActivityCard({ activity, index, startTime, onMoveUp, onMoveDown, onEdit
       )}
       {activity.description ? <Text style={ac.desc} numberOfLines={2}>{activity.description}</Text> : null}
       {activity.activity_notes ? (
-        <View style={ac.notesRow}><StickyNote size={12} color={colors.primary} /><Text style={ac.notesText}>{activity.activity_notes}</Text></View>
+        <View style={ac.notesRow}><StickyNote size={12} color={tc.primary} /><Text style={ac.notesText}>{activity.activity_notes}</Text></View>
       ) : null}
     </View>
   );
@@ -418,6 +422,7 @@ function ActivityCard({ activity, index, startTime, onMoveUp, onMoveDown, onEdit
 // ── Main Session Editor ─────────────────────────────────────────────
 export default function SessionEditorScreen() {
   const router = useRouter();
+  const { colors: tc, isDark } = useTheme();
   const params = useLocalSearchParams<{ id?: string }>();
   const isNew = !params.id;
 
@@ -493,11 +498,11 @@ export default function SessionEditorScreen() {
     : new Date();
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <StatusBar barStyle="light-content" backgroundColor={colors.background} />
+    <SafeAreaView style={[s.container, { backgroundColor: tc.background }]} edges={['top']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={tc.background} />
       {/* Header */}
       <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}><ArrowLeft size={22} color={colors.foreground} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}><ArrowLeft size={22} color={tc.foreground} /></TouchableOpacity>
         <Text style={s.headerTitle}>{isNew ? 'New Session' : 'Edit Session'}</Text>
       </View>
 
@@ -506,13 +511,13 @@ export default function SessionEditorScreen() {
           {/* Session Details */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>SESSION DETAILS</Text>
-            <View style={s.fieldGroup}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={colors.mutedForeground} /></View>
-            <View style={s.fieldGroup}><Text style={s.label}>Team / Group</Text><TextInput style={s.input} value={session.team_name} onChangeText={v => setSession({...session, team_name: v})} placeholder="e.g., U12 Boys" placeholderTextColor={colors.mutedForeground} /></View>
+            <View style={s.fieldGroup}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={tc.mutedForeground} /></View>
+            <View style={s.fieldGroup}><Text style={s.label}>Team / Group</Text><TextInput style={s.input} value={session.team_name} onChangeText={v => setSession({...session, team_name: v})} placeholder="e.g., U12 Boys" placeholderTextColor={tc.mutedForeground} /></View>
             <View style={s.row}>
               <View style={[s.fieldGroup, { flex: 1 }]}>
                 <Text style={s.label}>Date</Text>
                 <TouchableOpacity style={s.input} onPress={() => { setShowTimePicker(false); setShowDatePicker(true); }}>
-                  <Text style={{ color: session.session_date ? colors.foreground : colors.mutedForeground, fontSize: 14 }}>
+                  <Text style={{ color: session.session_date ? tc.foreground : tc.mutedForeground, fontSize: 14 }}>
                     {session.session_date || 'Select date'}
                   </Text>
                 </TouchableOpacity>
@@ -520,13 +525,13 @@ export default function SessionEditorScreen() {
               <View style={[s.fieldGroup, { flex: 1 }]}>
                 <Text style={s.label}>Time</Text>
                 <TouchableOpacity style={s.input} onPress={() => { setShowDatePicker(false); setShowTimePicker(true); }}>
-                  <Text style={{ color: session.session_time ? colors.foreground : colors.mutedForeground, fontSize: 14 }}>
+                  <Text style={{ color: session.session_time ? tc.foreground : tc.mutedForeground, fontSize: 14 }}>
                     {session.session_time || 'Select time'}
                   </Text>
                 </TouchableOpacity>
               </View>
             </View>
-            <View style={s.fieldGroup}><Text style={s.label}>Session Goals</Text><TextInput style={[s.input, { height: 60 }]} value={session.session_goals} onChangeText={v => setSession({...session, session_goals: v})} placeholder="What do you want to achieve?" placeholderTextColor={colors.mutedForeground} multiline /></View>
+            <View style={s.fieldGroup}><Text style={s.label}>Session Goals</Text><TextInput style={[s.input, { height: 60 }]} value={session.session_goals} onChangeText={v => setSession({...session, session_goals: v})} placeholder="What do you want to achieve?" placeholderTextColor={tc.mutedForeground} multiline /></View>
           </View>
 
           {/* Activities */}
@@ -544,7 +549,7 @@ export default function SessionEditorScreen() {
               ))
             )}
             <TouchableOpacity style={s.addDashed} onPress={() => { setEditingActivity(null); setShowAddModal(true); }}>
-              <Plus size={16} color={colors.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
+              <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
             </TouchableOpacity>
           </View>
 
@@ -556,13 +561,13 @@ export default function SessionEditorScreen() {
                 {equipment.map((item, i) => (
                   <View key={i} style={s.equipChip}>
                     <Text style={s.equipText}>{item.name}{item.quantity > 0 ? ` (${item.quantity})` : ''}</Text>
-                    <TouchableOpacity onPress={() => setEquipment(prev => prev.filter((_, idx) => idx !== i))}><X size={14} color={colors.mutedForeground} /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => setEquipment(prev => prev.filter((_, idx) => idx !== i))}><X size={14} color={tc.mutedForeground} /></TouchableOpacity>
                   </View>
                 ))}
               </View>
             )}
             <View style={s.equipAdd}>
-              <TextInput style={[s.input, { flex: 1 }]} value={newEquipName} onChangeText={setNewEquipName} placeholder="Add equipment..." placeholderTextColor={colors.mutedForeground} />
+              <TextInput style={[s.input, { flex: 1 }]} value={newEquipName} onChangeText={setNewEquipName} placeholder="Add equipment..." placeholderTextColor={tc.mutedForeground} />
               <TouchableOpacity style={s.equipAddBtn} onPress={() => { if (newEquipName.trim()) { setEquipment(prev => [...prev, { name: newEquipName.trim(), quantity: 0, checked: false }]); setNewEquipName(''); } }}>
                 <Text style={s.equipAddBtnText}>Add</Text>
               </TouchableOpacity>
@@ -572,7 +577,7 @@ export default function SessionEditorScreen() {
           {/* Coach Notes */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>COACH NOTES</Text>
-            <TextInput style={[s.input, { height: 80 }]} value={session.coach_notes} onChangeText={v => setSession({...session, coach_notes: v})} placeholder="Private notes..." placeholderTextColor={colors.mutedForeground} multiline />
+            <TextInput style={[s.input, { height: 80 }]} value={session.coach_notes} onChangeText={v => setSession({...session, coach_notes: v})} placeholder="Private notes..." placeholderTextColor={tc.mutedForeground} multiline />
           </View>
 
           {/* Save */}
@@ -616,77 +621,77 @@ export default function SessionEditorScreen() {
 
 // ── Styles ──────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
+  container: { flex: 1, backgroundColor: '#151823' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, paddingHorizontal: spacing.md, paddingVertical: spacing.md, borderBottomWidth: 1, borderBottomColor: '#2a3142' },
   backBtn: { width: 36, height: 36, justifyContent: 'center', alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '700', color: colors.foreground },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#e8eaed' },
   content: { padding: spacing.md, paddingBottom: 120, gap: spacing.md },
-  section: { backgroundColor: colors.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.md, gap: spacing.sm },
+  section: { backgroundColor: '#1e2433', borderRadius: borderRadius.lg, borderWidth: 1, borderColor: '#2a3142', padding: spacing.md, gap: spacing.sm },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  sectionTitle: { fontSize: 11, fontWeight: '600', color: colors.mutedForeground, letterSpacing: 1 },
-  sectionMeta: { fontSize: 12, color: colors.mutedForeground },
+  sectionTitle: { fontSize: 11, fontWeight: '600', color: '#8b919e', letterSpacing: 1 },
+  sectionMeta: { fontSize: 12, color: '#8b919e' },
   fieldGroup: { gap: spacing.xs },
-  label: { fontSize: 12, fontWeight: '500', color: colors.foreground },
-  input: { backgroundColor: colors.background, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: 10, color: colors.foreground, fontSize: 14 },
+  label: { fontSize: 12, fontWeight: '500', color: '#e8eaed' },
+  input: { backgroundColor: '#151823', borderRadius: borderRadius.sm, borderWidth: 1, borderColor: '#2a3142', paddingHorizontal: spacing.sm, paddingVertical: 10, color: '#e8eaed', fontSize: 14 },
   row: { flexDirection: 'row', gap: spacing.sm },
-  emptyText: { textAlign: 'center', color: colors.mutedForeground, fontSize: 13, paddingVertical: spacing.lg },
-  addDashed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderWidth: 1.5, borderStyle: 'dashed', borderColor: colors.border, borderRadius: borderRadius.md, paddingVertical: 12, marginTop: spacing.sm },
-  addDashedText: { fontSize: 13, color: colors.mutedForeground },
+  emptyText: { textAlign: 'center', color: '#8b919e', fontSize: 13, paddingVertical: spacing.lg },
+  addDashed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderWidth: 1.5, borderStyle: 'dashed', borderColor: '#2a3142', borderRadius: borderRadius.md, paddingVertical: 12, marginTop: spacing.sm },
+  addDashedText: { fontSize: 13, color: '#8b919e' },
   equipList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  equipChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: colors.background, borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 6, borderWidth: 1, borderColor: colors.border },
-  equipText: { fontSize: 13, color: colors.foreground },
+  equipChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: '#151823', borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 6, borderWidth: 1, borderColor: '#2a3142' },
+  equipText: { fontSize: 13, color: '#e8eaed' },
   equipAdd: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
-  equipAddBtn: { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, borderRadius: borderRadius.sm, paddingHorizontal: spacing.md, justifyContent: 'center' },
-  equipAddBtnText: { fontSize: 13, color: colors.foreground, fontWeight: '500' },
-  saveBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 16, alignItems: 'center' },
-  saveBtnText: { fontSize: 15, fontWeight: '600', color: colors.primaryForeground },
+  equipAddBtn: { backgroundColor: '#1e2433', borderWidth: 1, borderColor: '#2a3142', borderRadius: borderRadius.sm, paddingHorizontal: spacing.md, justifyContent: 'center' },
+  equipAddBtnText: { fontSize: 13, color: '#e8eaed', fontWeight: '500' },
+  saveBtn: { backgroundColor: '#4a9d6e', borderRadius: borderRadius.md, paddingVertical: 16, alignItems: 'center' },
+  saveBtnText: { fontSize: 15, fontWeight: '600', color: '#ffffff' },
 });
 
 const ac = StyleSheet.create({
-  card: { backgroundColor: colors.background, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.sm, marginBottom: spacing.sm },
+  card: { backgroundColor: '#151823', borderRadius: borderRadius.md, borderWidth: 1, borderColor: '#2a3142', padding: spacing.sm, marginBottom: spacing.sm },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.sm },
   timeline: { alignItems: 'center', paddingTop: 2 },
-  timeText: { fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: colors.mutedForeground, marginBottom: 4 },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: colors.primary },
+  timeText: { fontSize: 10, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', color: '#8b919e', marginBottom: 4 },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#4a9d6e' },
   info: { flex: 1 },
-  title: { fontSize: 14, fontWeight: '600', color: colors.foreground },
+  title: { fontSize: 14, fontWeight: '600', color: '#e8eaed' },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
-  meta: { fontSize: 11, color: colors.mutedForeground },
+  meta: { fontSize: 11, color: '#8b919e' },
   actions: { flexDirection: 'row', gap: spacing.sm, paddingTop: 2 },
   diagramWrap: { width: '100%', aspectRatio: 16 / 10, borderRadius: borderRadius.sm, overflow: 'hidden', marginTop: spacing.sm, backgroundColor: '#63b043' },
   diagram: { width: '100%', height: '100%' },
-  desc: { fontSize: 13, color: colors.mutedForeground, marginTop: spacing.xs },
+  desc: { fontSize: 13, color: '#8b919e', marginTop: spacing.xs },
   notesRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, marginTop: spacing.xs, backgroundColor: 'rgba(139,145,158,0.08)', borderRadius: borderRadius.sm, padding: spacing.xs },
-  notesText: { flex: 1, fontSize: 12, color: colors.mutedForeground },
+  notesText: { flex: 1, fontSize: 12, color: '#8b919e' },
 });
 
 const ms = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  modal: { backgroundColor: colors.background, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, maxHeight: '90%' },
-  mHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: colors.border },
-  mTitle: { fontSize: 17, fontWeight: '600', color: colors.foreground },
+  modal: { backgroundColor: '#151823', borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, maxHeight: '90%' },
+  mHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: '#2a3142' },
+  mTitle: { fontSize: 17, fontWeight: '600', color: '#e8eaed' },
   mBody: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
-  mFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderTopWidth: 1, borderTopColor: colors.border },
-  backText: { fontSize: 14, color: colors.primary, fontWeight: '500' },
-  submitBtn: { backgroundColor: colors.primary, borderRadius: borderRadius.md, paddingVertical: 10, paddingHorizontal: spacing.lg },
-  submitText: { fontSize: 14, fontWeight: '600', color: colors.primaryForeground },
+  mFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderTopWidth: 1, borderTopColor: '#2a3142' },
+  backText: { fontSize: 14, color: '#4a9d6e', fontWeight: '500' },
+  submitBtn: { backgroundColor: '#4a9d6e', borderRadius: borderRadius.md, paddingVertical: 10, paddingHorizontal: spacing.lg },
+  submitText: { fontSize: 14, fontWeight: '600', color: '#ffffff' },
   chooseGrid: { gap: spacing.md },
-  chooseCard: { backgroundColor: colors.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: colors.border, padding: spacing.lg, gap: spacing.xs },
-  chooseLabel: { fontSize: 15, fontWeight: '600', color: colors.foreground },
-  chooseDesc: { fontSize: 13, color: colors.mutedForeground },
-  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, height: 40, gap: spacing.xs },
-  searchInput: { flex: 1, color: colors.foreground, fontSize: 14 },
-  emptyText: { textAlign: 'center', color: colors.mutedForeground, fontSize: 13, paddingVertical: 40 },
+  chooseCard: { backgroundColor: '#1e2433', borderRadius: borderRadius.lg, borderWidth: 1, borderColor: '#2a3142', padding: spacing.lg, gap: spacing.xs },
+  chooseLabel: { fontSize: 15, fontWeight: '600', color: '#e8eaed' },
+  chooseDesc: { fontSize: 13, color: '#8b919e' },
+  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#1e2433', borderRadius: borderRadius.md, borderWidth: 1, borderColor: '#2a3142', paddingHorizontal: spacing.sm, height: 40, gap: spacing.xs },
+  searchInput: { flex: 1, color: '#e8eaed', fontSize: 14 },
+  emptyText: { textAlign: 'center', color: '#8b919e', fontSize: 13, paddingVertical: 40 },
   drillGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  drillCard: { width: '48%', borderRadius: borderRadius.md, borderWidth: 2, borderColor: colors.border, overflow: 'hidden', backgroundColor: colors.card },
-  drillCardSelected: { borderColor: colors.primary },
+  drillCard: { width: '48%', borderRadius: borderRadius.md, borderWidth: 2, borderColor: '#2a3142', overflow: 'hidden', backgroundColor: '#1e2433' },
+  drillCardSelected: { borderColor: '#4a9d6e' },
   drillImg: { width: '100%', aspectRatio: 4 / 3 },
-  drillName: { fontSize: 13, fontWeight: '500', color: colors.foreground },
-  drillMeta: { fontSize: 10, color: colors.mutedForeground, marginTop: 2 },
-  detailSection: { borderTopWidth: 1, borderTopColor: colors.border, paddingTop: spacing.md, marginTop: spacing.md, gap: spacing.sm },
-  fieldLabel: { fontSize: 12, fontWeight: '500', color: colors.foreground, marginBottom: 4 },
-  fieldInput: { backgroundColor: colors.card, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, paddingHorizontal: spacing.sm, paddingVertical: 10, color: colors.foreground, fontSize: 14 },
-  editDrillInfo: { backgroundColor: colors.card, borderRadius: borderRadius.md, borderWidth: 1, borderColor: colors.border, padding: spacing.md },
-  editDrillName: { fontSize: 15, fontWeight: '600', color: colors.foreground },
-  editDrillMeta: { fontSize: 12, color: colors.mutedForeground, marginTop: 4 },
+  drillName: { fontSize: 13, fontWeight: '500', color: '#e8eaed' },
+  drillMeta: { fontSize: 10, color: '#8b919e', marginTop: 2 },
+  detailSection: { borderTopWidth: 1, borderTopColor: '#2a3142', paddingTop: spacing.md, marginTop: spacing.md, gap: spacing.sm },
+  fieldLabel: { fontSize: 12, fontWeight: '500', color: '#e8eaed', marginBottom: 4 },
+  fieldInput: { backgroundColor: '#1e2433', borderRadius: borderRadius.sm, borderWidth: 1, borderColor: '#2a3142', paddingHorizontal: spacing.sm, paddingVertical: 10, color: '#e8eaed', fontSize: 14 },
+  editDrillInfo: { backgroundColor: '#1e2433', borderRadius: borderRadius.md, borderWidth: 1, borderColor: '#2a3142', padding: spacing.md },
+  editDrillName: { fontSize: 15, fontWeight: '600', color: '#e8eaed' },
+  editDrillMeta: { fontSize: 12, color: '#8b919e', marginTop: 4 },
 });

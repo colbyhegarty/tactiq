@@ -1,9 +1,10 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, LayoutChangeEvent } from 'react-native';
-import Svg, { Rect, Circle, Line, G, Text as SvgText, Polygon, Path } from 'react-native-svg';
-import { Play, Pause, SkipBack, SkipForward, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react-native';
-import { DrillJsonData, AnimationKeyframe, Position } from '../types/drill';
-import { colors, spacing, borderRadius } from '../theme/colors';
+import { ChevronLeft, ChevronRight, Pause, Play, RefreshCw, SkipBack, SkipForward } from 'lucide-react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import Svg, { Circle, G, Line, Path, Polygon, Rect } from 'react-native-svg';
+import { borderRadius, spacing } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { AnimationKeyframe, DrillJsonData, Position } from '../types/drill';
 
 // ── Colors matching renderer.py / drillRenderer.ts ──────────────────
 const GRASS_LIGHT = '#6fbf4a';
@@ -62,6 +63,7 @@ interface DrillDiagramViewProps {
 }
 
 export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectRatio }: DrillDiagramViewProps) {
+  const { colors: tc } = useTheme();
   const [svgW, setSvgW] = useState(300);
   const bounds = useMemo(() => {
     const b = calculateBounds(drillJson);
@@ -369,9 +371,10 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
     const p = toSvg(pp.x, pp.y);
     const color = PLAYER_COLORS[player.role] || PLAYER_COLORS[player.role?.toLowerCase()] || '#888';
     const r = fScale(1.8);
+    const sw = Math.max(1, fScale(0.4));
     return (
       <G key={`p-${i}`}>
-        <Circle cx={p.x} cy={p.y} r={r} fill={color} stroke="white" strokeWidth={2} />
+        <Circle cx={p.x} cy={p.y} r={r} fill={color} stroke="white" strokeWidth={sw} />
       </G>
     );
   });
@@ -380,9 +383,10 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
     const bp = getEntityPos(`ball_${i}`, ball.position);
     const p = toSvg(bp.x, bp.y);
     const r = fScale(1.4);
+    const bsw = Math.max(0.8, fScale(0.3));
     const pentR = r * 0.45;
     const pentPts = Array.from({ length: 5 }, (_, k) => { const a = (-Math.PI / 2) + (2 * Math.PI * k) / 5; return `${p.x + pentR * Math.cos(a)},${p.y + pentR * Math.sin(a)}`; }).join(' ');
-    return <G key={`b-${i}`}><Circle cx={p.x} cy={p.y} r={r} fill="white" stroke="black" strokeWidth={1.5} /><Polygon points={pentPts} fill="black" /></G>;
+    return <G key={`b-${i}`}><Circle cx={p.x} cy={p.y} r={r} fill="white" stroke="black" strokeWidth={bsw} /><Polygon points={pentPts} fill="black" /></G>;
   });
 
   const progressPct = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
@@ -408,26 +412,26 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
       {mode === 'animated' && keyframes.length >= 2 && (
         <View style={ds.controls}>
           <View style={ds.controlRow}>
-            <TouchableOpacity onPress={() => { setPlaying(false); setCT(0); }} style={ds.ctrlBtn}><SkipBack size={16} color={colors.foreground} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setPlaying(false); setCT(0); }} style={ds.ctrlBtn}><SkipBack size={16} color={tc.foreground} /></TouchableOpacity>
             <TouchableOpacity onPress={() => {
               setPlaying(false);
               let t = 0, prev = 0;
               for (let i = 1; i < keyframes.length; i++) { t += (keyframes[i].duration || 1000); if (t >= currentTime - 50) break; prev = t; }
               setCT(currentTime <= 50 ? 0 : prev);
-            }} style={ds.ctrlBtn}><ChevronLeft size={16} color={colors.foreground} /></TouchableOpacity>
+            }} style={ds.ctrlBtn}><ChevronLeft size={16} color={tc.foreground} /></TouchableOpacity>
             <TouchableOpacity onPress={() => {
               if (currentTime >= totalDuration) setCT(0);
               setPlaying(!playing);
             }} style={ds.playBtn}>
-              {playing ? <Pause size={20} color={colors.primaryForeground} /> : <Play size={20} color={colors.primaryForeground} style={{ marginLeft: 2 }} />}
+              {playing ? <Pause size={20} color={tc.primaryForeground} /> : <Play size={20} color={tc.primaryForeground} style={{ marginLeft: 2 }} />}
             </TouchableOpacity>
             <TouchableOpacity onPress={() => {
               setPlaying(false);
               let t = 0;
               for (let i = 1; i < keyframes.length; i++) { t += (keyframes[i].duration || 1000); if (t > currentTime + 50) { setCT(t); return; } }
               setCT(totalDuration);
-            }} style={ds.ctrlBtn}><ChevronRight size={16} color={colors.foreground} /></TouchableOpacity>
-            <TouchableOpacity onPress={() => { setPlaying(false); setCT(totalDuration); }} style={ds.ctrlBtn}><SkipForward size={16} color={colors.foreground} /></TouchableOpacity>
+            }} style={ds.ctrlBtn}><ChevronRight size={16} color={tc.foreground} /></TouchableOpacity>
+            <TouchableOpacity onPress={() => { setPlaying(false); setCT(totalDuration); }} style={ds.ctrlBtn}><SkipForward size={16} color={tc.foreground} /></TouchableOpacity>
           </View>
           {/* Progress bar */}
           <View style={ds.progressWrap}>
@@ -442,7 +446,7 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={[ds.loopBtn, looping && ds.loopBtnActive]} onPress={() => setLooping(!looping)}>
-              <RefreshCw size={14} color={looping ? colors.primaryForeground : colors.mutedForeground} />
+              <RefreshCw size={14} color={looping ? tc.primaryForeground : tc.mutedForeground} />
               <Text style={[ds.loopText, looping && ds.loopTextActive]}>Loop</Text>
             </TouchableOpacity>
           </View>
@@ -456,18 +460,18 @@ const ds = StyleSheet.create({
   diagramWrap: { width: '100%', borderRadius: borderRadius.lg, overflow: 'hidden' },
   controls: { marginTop: spacing.sm, gap: spacing.sm },
   controlRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, flexWrap: 'wrap' },
-  ctrlBtn: { width: 36, height: 36, borderRadius: borderRadius.sm, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, justifyContent: 'center', alignItems: 'center' },
-  playBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, justifyContent: 'center', alignItems: 'center' },
+  ctrlBtn: { width: 36, height: 36, borderRadius: borderRadius.sm, backgroundColor: '#1e2433', borderWidth: 1, borderColor: '#2a3142', justifyContent: 'center', alignItems: 'center' },
+  playBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#4a9d6e', justifyContent: 'center', alignItems: 'center' },
   progressWrap: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  progressBg: { flex: 1, height: 4, backgroundColor: colors.border, borderRadius: 2, overflow: 'hidden' },
-  progressFill: { height: 4, backgroundColor: colors.primary, borderRadius: 2 },
-  timeText: { fontSize: 11, color: colors.mutedForeground, fontVariant: ['tabular-nums'], minWidth: 70, textAlign: 'right' },
-  speedBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-  speedBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  speedText: { fontSize: 12, color: colors.mutedForeground },
-  speedTextActive: { color: colors.primaryForeground, fontWeight: '600' },
-  loopBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
-  loopBtnActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  loopText: { fontSize: 12, color: colors.mutedForeground },
-  loopTextActive: { color: colors.primaryForeground, fontWeight: '600' },
+  progressBg: { flex: 1, height: 4, backgroundColor: '#2a3142', borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: 4, backgroundColor: '#4a9d6e', borderRadius: 2 },
+  timeText: { fontSize: 11, color: '#8b919e', fontVariant: ['tabular-nums'], minWidth: 70, textAlign: 'right' },
+  speedBtn: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: '#2a3142', backgroundColor: '#1e2433' },
+  speedBtnActive: { backgroundColor: '#4a9d6e', borderColor: '#4a9d6e' },
+  speedText: { fontSize: 12, color: '#8b919e' },
+  speedTextActive: { color: '#ffffff', fontWeight: '600' },
+  loopBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.sm, borderWidth: 1, borderColor: '#2a3142', backgroundColor: '#1e2433' },
+  loopBtnActive: { backgroundColor: '#4a9d6e', borderColor: '#4a9d6e' },
+  loopText: { fontSize: 12, color: '#8b919e' },
+  loopTextActive: { color: '#ffffff', fontWeight: '600' },
 });

@@ -15,8 +15,10 @@ import {
 } from 'react-native';
 import { Contact, getContacts } from '../lib/contactsStorage';
 import { generatePDFUri } from '../lib/sessionPdf';
-import { borderRadius, colors, spacing } from '../theme/colors';
-import { Drill } from '../types/drill';
+import { getUserProfile } from '../lib/storage';
+import { borderRadius, spacing } from '../theme/colors';
+import { useTheme } from '../theme/ThemeContext';
+import { Drill, PdfSettings, defaultPdfSettings } from '../types/drill';
 import { Session } from '../types/session';
 
 interface ShareSessionModalProps {
@@ -27,13 +29,16 @@ interface ShareSessionModalProps {
 }
 
 export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: ShareSessionModalProps) {
+  const { colors: tc } = useTheme();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [pdfSettings, setPdfSettings] = useState<PdfSettings>(defaultPdfSettings);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       getContacts().then(setContacts);
+      getUserProfile().then(p => { if (p.pdfSettings) setPdfSettings(p.pdfSettings); });
       setSelected(new Set());
     }
   }, [isOpen]);
@@ -55,7 +60,7 @@ export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: Sh
 
     setSending(true);
     try {
-      const pdfUri = await generatePDFUri(session, drillDetails);
+      const pdfUri = await generatePDFUri(session, drillDetails, pdfSettings);
       const title = session.title || 'Training Session';
 
       if (method === 'email') {
@@ -122,7 +127,7 @@ export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: Sh
           <View style={st.sheetHeader}>
             <Text style={st.sheetTitle}>Share Session</Text>
             <TouchableOpacity onPress={onClose} style={st.closeBtn}>
-              <X size={20} color={colors.foreground} />
+              <X size={20} color={tc.foreground} />
             </TouchableOpacity>
           </View>
 
@@ -133,7 +138,7 @@ export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: Sh
           {/* Contact list */}
           {contacts.length === 0 ? (
             <View style={st.emptyState}>
-              <View style={st.emptyIcon}><User size={24} color={colors.mutedForeground} /></View>
+              <View style={st.emptyIcon}><User size={24} color={tc.mutedForeground} /></View>
               <Text style={st.emptyTitle}>No contacts yet</Text>
               <Text style={st.emptySubtitle}>Add contacts in your profile settings first</Text>
             </View>
@@ -150,8 +155,8 @@ export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: Sh
                   >
                     <View style={[st.contactAvatar, isSelected && st.contactAvatarSelected]}>
                       {isSelected
-                        ? <Check size={14} color={colors.primaryForeground} />
-                        : <User size={12} color={colors.mutedForeground} />
+                        ? <Check size={14} color={tc.primaryForeground} />
+                        : <User size={12} color={tc.mutedForeground} />
                       }
                     </View>
                     <View style={st.contactInfo}>
@@ -175,10 +180,10 @@ export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: Sh
                 disabled={selected.size === 0 || sending}
               >
                 {sending ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={tc.primary} />
                 ) : (
                   <>
-                    <Mail size={16} color={selected.size === 0 ? colors.mutedForeground : colors.primary} />
+                    <Mail size={16} color={selected.size === 0 ? tc.mutedForeground : tc.primary} />
                     <Text style={[st.actionBtnText, selected.size === 0 && st.actionBtnTextDisabled]}>Email PDF</Text>
                   </>
                 )}
@@ -189,10 +194,10 @@ export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: Sh
                 disabled={selected.size === 0 || sending}
               >
                 {sending ? (
-                  <ActivityIndicator size="small" color={colors.primary} />
+                  <ActivityIndicator size="small" color={tc.primary} />
                 ) : (
                   <>
-                    <MessageSquare size={16} color={selected.size === 0 ? colors.mutedForeground : colors.primary} />
+                    <MessageSquare size={16} color={selected.size === 0 ? tc.mutedForeground : tc.primary} />
                     <Text style={[st.actionBtnText, selected.size === 0 && st.actionBtnTextDisabled]}>Text PDF</Text>
                   </>
                 )}
@@ -208,7 +213,7 @@ export function ShareSessionModal({ session, drillDetails, isOpen, onClose }: Sh
 const st = StyleSheet.create({
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: colors.background,
+    backgroundColor: '#151823',
     borderTopLeftRadius: borderRadius.xl,
     borderTopRightRadius: borderRadius.xl,
     paddingBottom: 40,
@@ -222,14 +227,14 @@ const st = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  sheetTitle: { fontSize: 18, fontWeight: '700', color: colors.foreground },
-  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.card, justifyContent: 'center', alignItems: 'center' },
-  subtitle: { fontSize: 13, color: colors.mutedForeground, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
-  subtitleBold: { color: colors.foreground, fontWeight: '600' },
-  emptyState: { alignItems: 'center', paddingVertical: spacing.xl * 2, marginHorizontal: spacing.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.border, borderRadius: borderRadius.lg },
-  emptyIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.card, justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
-  emptyTitle: { fontSize: 14, fontWeight: '600', color: colors.foreground, marginBottom: spacing.xs },
-  emptySubtitle: { fontSize: 12, color: colors.mutedForeground },
+  sheetTitle: { fontSize: 18, fontWeight: '700', color: '#e8eaed' },
+  closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: '#1e2433', justifyContent: 'center', alignItems: 'center' },
+  subtitle: { fontSize: 13, color: '#8b919e', paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  subtitleBold: { color: '#e8eaed', fontWeight: '600' },
+  emptyState: { alignItems: 'center', paddingVertical: spacing.xl * 2, marginHorizontal: spacing.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: '#2a3142', borderRadius: borderRadius.lg },
+  emptyIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#1e2433', justifyContent: 'center', alignItems: 'center', marginBottom: spacing.sm },
+  emptyTitle: { fontSize: 14, fontWeight: '600', color: '#e8eaed', marginBottom: spacing.xs },
+  emptySubtitle: { fontSize: 12, color: '#8b919e' },
   contactList: { maxHeight: 300, paddingHorizontal: spacing.lg },
   contactRow: {
     flexDirection: 'row',
@@ -238,28 +243,28 @@ const st = StyleSheet.create({
     padding: spacing.md,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    borderColor: '#2a3142',
+    backgroundColor: '#1e2433',
     marginBottom: spacing.sm,
   },
   contactRowSelected: {
-    borderColor: colors.primary,
+    borderColor: '#4a9d6e',
     backgroundColor: 'rgba(74,157,110,0.06)',
   },
   contactAvatar: {
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.background,
+    backgroundColor: '#151823',
     justifyContent: 'center',
     alignItems: 'center',
   },
   contactAvatarSelected: {
-    backgroundColor: colors.primary,
+    backgroundColor: '#4a9d6e',
   },
   contactInfo: { flex: 1 },
-  contactName: { fontSize: 14, fontWeight: '500', color: colors.foreground },
-  contactDetail: { fontSize: 11, color: colors.mutedForeground, marginTop: 1 },
+  contactName: { fontSize: 14, fontWeight: '500', color: '#e8eaed' },
+  contactDetail: { fontSize: 11, color: '#8b919e', marginTop: 1 },
   actions: {
     flexDirection: 'row',
     gap: spacing.sm,
@@ -275,12 +280,12 @@ const st = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: borderRadius.md,
     borderWidth: 1,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
+    borderColor: '#2a3142',
+    backgroundColor: '#1e2433',
   },
   actionBtnEmail: {},
   actionBtnText2: {},
   actionBtnDisabled: { opacity: 0.4 },
-  actionBtnText: { fontSize: 13, fontWeight: '600', color: colors.primary },
-  actionBtnTextDisabled: { color: colors.mutedForeground },
+  actionBtnText: { fontSize: 13, fontWeight: '600', color: '#4a9d6e' },
+  actionBtnTextDisabled: { color: '#8b919e' },
 });

@@ -1,7 +1,8 @@
 import { Stack } from 'expo-router';
-import { colors } from '../src/theme/colors';
+import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 
-export default function RootLayout() {
+function RootStack() {
+  const { colors } = useTheme();
   return (
     <Stack
       screenOptions={{
@@ -15,5 +16,13 @@ export default function RootLayout() {
       <Stack.Screen name="session-editor" />
       <Stack.Screen name="drill-editor" />
     </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootStack />
+    </ThemeProvider>
   );
 }
