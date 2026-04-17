@@ -38,7 +38,8 @@ export interface PassAction {
   id: string;
   type: 'PASS';
   fromPlayerId: string;
-  toPlayerId: string;
+  toPlayerId?: string;
+  toPosition?: FieldPosition;
 }
 
 export interface RunAction {

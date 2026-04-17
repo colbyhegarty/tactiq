@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Session } from '../types/session';
 
-const SESSIONS_KEY = 'drillforge_sessions';
+const SESSIONS_KEY = 'tactiq_sessions';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

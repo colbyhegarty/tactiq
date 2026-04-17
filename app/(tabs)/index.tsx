@@ -30,6 +30,7 @@ import {
   warmUpBackend,
 } from '../../src/lib/api';
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
+import { useSubscription, usePaywallGate, PaywallModal } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -42,6 +43,8 @@ export default function LibraryScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
   const styles = create_styles(tc);
+  const { isDrillUnlocked } = useSubscription();
+  const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
   const [categories, setCategories] = useState<string[]>([]);
   const [ageGroups, setAgeGroups] = useState<string[]>([]);
   const durations = ['10 min.', '15 min.', '20 min.', '30 min.'];
@@ -148,6 +151,12 @@ export default function LibraryScreen() {
 
   // Drill detail handler
   const handleViewDrill = async (drill: Drill) => {
+    // If drill is locked, show paywall instead
+    if (!isDrillUnlocked(drill.id)) {
+      await gate('view_locked_drill');
+      return;
+    }
+
     setIsLoadingDrill(true);
     try {
       const response = await fetchLibraryDrill(drill.id);
@@ -358,7 +367,8 @@ export default function LibraryScreen() {
               onSave={handleSaveDrill}
               isSaved={isDrillCurrentlySaved(item.id)}
               compact={gridCols === 2}
-              onQuickView={setQuickPreviewDrill}
+              onQuickView={isDrillUnlocked(item.id) ? setQuickPreviewDrill : undefined}
+              isLocked={!isDrillUnlocked(item.id)}
             />
           </View>
         )}
@@ -404,6 +414,12 @@ export default function LibraryScreen() {
         onViewFull={(drill) => { setQuickPreviewDrill(null); handleViewDrill(drill); }}
         isSaved={quickPreviewDrill ? isDrillCurrentlySaved(quickPreviewDrill.id) : false}
         onSave={handleSaveDrill}
+      />
+
+      <PaywallModal
+        visible={paywallVisible}
+        onDismiss={dismissPaywall}
+        reason={paywallReason}
       />
     </SafeAreaView>
   );

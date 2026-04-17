@@ -44,6 +44,7 @@ import { customDrillToDrill } from '../../src/lib/drillConverter';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
 import { clearAllData, getSavedDrills, getUserProfile, removeDrill, saveUserProfile } from '../../src/lib/storage';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { PlanStatusCard, PaywallModal } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { CustomDrill } from '../../src/types/customDrill';
 import { defaultPdfSettings, Drill, PdfSettings, UserProfile } from '../../src/types/drill';
@@ -69,6 +70,7 @@ export default function ProfileScreen() {
   const [gridCols, setGridCols] = useState<1 | 2>(2);
   const [pdfSettings, setPdfSettings] = useState<PdfSettings>(defaultPdfSettings);
   const [showCameraIcon, setShowCameraIcon] = useState(false);
+  const [showPaywall, setShowPaywall] = useState(false);
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
 
@@ -325,6 +327,9 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={ps.scrollView} contentContainerStyle={ps.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Subscription Status / Upgrade Card */}
+        <PlanStatusCard onUpgrade={() => setShowPaywall(true)} />
+
         {/* Profile Card */}
         <View style={[ps.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={ps.profileBody}>
@@ -466,6 +471,11 @@ export default function ProfileScreen() {
         onClose={() => setSelectedDrill(null)}
         isSaved={selectedDrill?.source !== 'custom' && savedDrills.some(d => d.id === selectedDrill?.id)}
         onSave={selectedDrill?.source !== 'custom' ? handleRemoveDrill : undefined}
+      />
+
+      <PaywallModal
+        visible={showPaywall}
+        onDismiss={() => setShowPaywall(false)}
       />
     </SafeAreaView>
   );

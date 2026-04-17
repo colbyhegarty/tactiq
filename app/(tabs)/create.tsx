@@ -11,12 +11,14 @@ import { fetchDrills } from '../../src/lib/api';
 import { Drill } from '../../src/types/drill';
 import { spacing, borderRadius } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
+import { usePaywallGate, PaywallModal } from '../../src/subscription';
 
 const PICKER_PER_PAGE = 12;
 
 export default function CreateScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
+  const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
 
   const [showPicker, setShowPicker] = useState(false);
   const [pickerDrills, setPickerDrills] = useState<Drill[]>([]);
@@ -64,13 +66,21 @@ export default function CreateScreen() {
         <Text style={[s.subtext, { color: colors.mutedForeground }]}>Create a new drill from scratch or start with an existing drill from the library.</Text>
 
         <View style={s.cards}>
-          <TouchableOpacity style={[s.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => router.push('/drill-editor')} activeOpacity={0.7}>
+          <TouchableOpacity style={[s.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={async () => {
+              const allowed = await gate('create_custom_drill');
+              if (!allowed) return;
+              router.push('/drill-editor');
+            }} activeOpacity={0.7}>
             <View style={[s.cardIcon, { backgroundColor: colors.primaryLight }]}><Sparkles size={24} color={colors.primary} /></View>
             <Text style={[s.cardTitle, { color: colors.foreground }]}>Start from Scratch</Text>
             <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>Create a new drill with a blank canvas</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={[s.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => setShowPicker(true)} activeOpacity={0.7}>
+          <TouchableOpacity style={[s.card, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={async () => {
+              const allowed = await gate('create_custom_drill');
+              if (!allowed) return;
+              setShowPicker(true);
+            }} activeOpacity={0.7}>
             <View style={[s.cardIcon, { backgroundColor: colors.primaryLight }]}><Copy size={24} color={colors.primary} /></View>
             <Text style={[s.cardTitle, { color: colors.foreground }]}>Start from Existing</Text>
             <Text style={[s.cardDesc, { color: colors.mutedForeground }]}>Modify a drill from the library</Text>
@@ -124,6 +134,12 @@ export default function CreateScreen() {
           )}
         </SafeAreaView>
       </Modal>
+
+      <PaywallModal
+        visible={paywallVisible}
+        onDismiss={dismissPaywall}
+        reason={paywallReason}
+      />
     </SafeAreaView>
   );
 }

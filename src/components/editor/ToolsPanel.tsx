@@ -1,21 +1,25 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { MousePointer, Triangle, CircleDot, Crosshair, ArrowRight, MoveRight, Zap, Target, Minus } from 'lucide-react-native';
+import { MousePointer, Triangle, CircleDot, Crosshair, Minus, Grid3x3, Undo2 } from 'lucide-react-native';
 import { EditorTool } from '../../types/customDrill';
-import { colors, spacing, borderRadius } from '../../theme/colors';
+import { spacing, borderRadius } from '../../theme/colors';
 import { useTheme } from '../../theme/ThemeContext';
 
 interface ToolsPanelProps {
   activeTool: EditorTool;
   onToolChange: (tool: EditorTool) => void;
   pendingActionFrom: string | null;
+  snapToGrid: boolean;
+  onSnapToggle: () => void;
+  canUndo: boolean;
+  onUndo: () => void;
 }
 
 const playerTools: { id: EditorTool; label: string; color: string }[] = [
-  { id: 'attacker', label: 'Attacker', color: '#ef4444' },
-  { id: 'defender', label: 'Defender', color: '#3b82f6' },
+  { id: 'attacker', label: 'ATK', color: '#ef4444' },
+  { id: 'defender', label: 'DEF', color: '#3b82f6' },
   { id: 'goalkeeper', label: 'GK', color: '#facc15' },
-  { id: 'neutral', label: 'Neutral', color: '#fb923c' },
+  { id: 'neutral', label: 'NEU', color: '#fb923c' },
 ];
 
 const equipTools: { id: EditorTool; label: string }[] = [
@@ -32,12 +36,13 @@ const actionTools: { id: EditorTool; label: string; color: string }[] = [
   { id: 'shot', label: 'Shot', color: '#ef4444' },
 ];
 
-export function ToolsPanel({ activeTool, onToolChange, pendingActionFrom }: ToolsPanelProps) {
+export function ToolsPanel({ activeTool, onToolChange, pendingActionFrom, snapToGrid, onSnapToggle, canUndo, onUndo }: ToolsPanelProps) {
   const { colors: tc } = useTheme();
   const s = create_s(tc);
-  const Btn = ({ id, active, children }: { id: EditorTool; active: boolean; children: React.ReactNode }) => (
+
+  const Chip = ({ id, active, children, style }: { id: EditorTool; active: boolean; children: React.ReactNode; style?: any }) => (
     <TouchableOpacity
-      style={[s.btn, active && s.btnActive]}
+      style={[s.chip, active && s.chipActive, style]}
       onPress={() => onToolChange(id)}
       activeOpacity={0.7}
     >
@@ -47,56 +52,70 @@ export function ToolsPanel({ activeTool, onToolChange, pendingActionFrom }: Tool
 
   return (
     <View style={s.container}>
-      {/* Select */}
-      <Btn id="select" active={activeTool === 'select'}>
-        <MousePointer size={14} color={tc.foreground} />
-        <Text style={s.btnLabel}>Select / Move</Text>
-      </Btn>
+      {/* Top row: Select + Snap + Undo */}
+      <View style={s.topRow}>
+        <Chip id="select" active={activeTool === 'select'} style={s.flexChip}>
+          <MousePointer size={14} color={tc.foreground} />
+          <Text style={s.chipLabel}>Select / Move</Text>
+        </Chip>
+        <TouchableOpacity
+          style={[s.iconBtn, snapToGrid && s.iconBtnActive]}
+          onPress={onSnapToggle}
+          activeOpacity={0.7}
+        >
+          <Grid3x3 size={16} color={snapToGrid ? '#4a9d6e' : tc.mutedForeground} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.iconBtn, !canUndo && s.iconBtnDisabled]}
+          onPress={onUndo}
+          activeOpacity={canUndo ? 0.7 : 1}
+          disabled={!canUndo}
+        >
+          <Undo2 size={16} color={canUndo ? tc.foreground : tc.mutedForeground} />
+        </TouchableOpacity>
+      </View>
 
-      {/* Players */}
+      {/* Players — single row */}
       <Text style={s.sectionLabel}>PLAYERS</Text>
-      <View style={s.grid}>
+      <View style={s.row}>
         {playerTools.map(t => (
-          <Btn key={t.id} id={t.id} active={activeTool === t.id}>
+          <Chip key={t.id} id={t.id} active={activeTool === t.id} style={s.flexChip}>
             <View style={[s.dot, { backgroundColor: t.color }]} />
-            <Text style={s.gridLabel}>{t.label}</Text>
-          </Btn>
+            <Text style={s.chipLabel}>{t.label}</Text>
+          </Chip>
         ))}
       </View>
 
-      {/* Equipment */}
+      {/* Equipment — single row */}
       <Text style={s.sectionLabel}>EQUIPMENT</Text>
-      <View style={s.grid}>
+      <View style={s.row}>
         {equipTools.map(t => (
-          <Btn key={t.id} id={t.id} active={activeTool === t.id}>
-            {t.id === 'cone' ? <Triangle size={14} color="#fb923c" /> :
-             t.id === 'ball' ? <CircleDot size={14} color={tc.foreground} /> :
-             <Crosshair size={14} color={tc.foreground} />}
-            <Text style={s.gridLabel}>{t.label}</Text>
-          </Btn>
+          <Chip key={t.id} id={t.id} active={activeTool === t.id} style={s.flexChip}>
+            {t.id === 'cone' ? <Triangle size={12} color="#fb923c" /> :
+             t.id === 'ball' ? <CircleDot size={12} color={tc.foreground} /> :
+             <Crosshair size={12} color={tc.foreground} />}
+            <Text style={s.chipLabel}>{t.label}</Text>
+          </Chip>
         ))}
       </View>
 
       {/* Boundaries */}
       <Text style={s.sectionLabel}>BOUNDARIES</Text>
-      <Btn id="coneline" active={activeTool === 'coneline'}>
+      <Chip id="coneline" active={activeTool === 'coneline'}>
         <Minus size={14} color="#fb923c" style={{ transform: [{ rotate: '-30deg' }] }} />
-        <Text style={s.btnLabel}>Cone Line</Text>
-      </Btn>
+        <Text style={s.chipLabel}>Cone Line</Text>
+      </Chip>
 
-      {/* Actions */}
+      {/* Actions — single row */}
       <Text style={s.sectionLabel}>ACTIONS</Text>
-      {actionTools.map(t => (
-        <TouchableOpacity
-          key={t.id}
-          style={[s.actionBtn, activeTool === t.id && s.btnActive, { borderLeftColor: t.color }]}
-          onPress={() => onToolChange(t.id)}
-          activeOpacity={0.7}
-        >
-          <View style={[s.actionDot, { backgroundColor: t.color }]} />
-          <Text style={s.btnLabel}>{t.label}</Text>
-        </TouchableOpacity>
-      ))}
+      <View style={s.row}>
+        {actionTools.map(t => (
+          <Chip key={t.id} id={t.id} active={activeTool === t.id} style={s.flexChip}>
+            <View style={[s.actionDot, { backgroundColor: t.color }]} />
+            <Text style={s.chipLabel}>{t.label}</Text>
+          </Chip>
+        ))}
+      </View>
 
       {/* Pending indicator */}
       {pendingActionFrom && (
@@ -104,24 +123,24 @@ export function ToolsPanel({ activeTool, onToolChange, pendingActionFrom }: Tool
           <Text style={s.pendingText}>Tap target to complete action</Text>
         </View>
       )}
-
-      <Text style={s.tip}>Tip: Select a tool, tap on field to place.</Text>
     </View>
   );
 }
 
 function create_s(tc: any) { return StyleSheet.create({
   container: { gap: spacing.sm, padding: spacing.sm },
+  topRow: { flexDirection: 'row', gap: 6, alignItems: 'center' },
+  row: { flexDirection: 'row', gap: 4 },
   sectionLabel: { fontSize: 9, fontWeight: '700', color: tc.mutedForeground, letterSpacing: 1.5, marginTop: spacing.xs },
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  btn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, borderRadius: borderRadius.sm, paddingVertical: 8, paddingHorizontal: 10 },
-  btnActive: { backgroundColor: 'rgba(74,157,110,0.25)', borderColor: 'rgba(74,157,110,0.5)' },
-  btnLabel: { fontSize: 12, color: tc.foreground },
-  dot: { width: 10, height: 10, borderRadius: 5 },
-  gridLabel: { fontSize: 10, color: tc.foreground },
-  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, borderLeftWidth: 3, borderRadius: borderRadius.sm, paddingVertical: 8, paddingHorizontal: 10 },
-  actionDot: { width: 8, height: 8, borderRadius: 4 },
+  chip: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4, backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, borderRadius: borderRadius.sm, paddingVertical: 8, paddingHorizontal: 8 },
+  chipActive: { backgroundColor: 'rgba(74,157,110,0.25)', borderColor: 'rgba(74,157,110,0.5)' },
+  flexChip: { flex: 1 },
+  chipLabel: { fontSize: 10, color: tc.foreground },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  actionDot: { width: 6, height: 6, borderRadius: 3 },
+  iconBtn: { width: 36, height: 36, borderRadius: borderRadius.sm, backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border, justifyContent: 'center', alignItems: 'center' },
+  iconBtnActive: { backgroundColor: 'rgba(74,157,110,0.2)', borderColor: 'rgba(74,157,110,0.5)' },
+  iconBtnDisabled: { opacity: 0.4 },
   pending: { backgroundColor: 'rgba(250,204,21,0.15)', borderWidth: 1, borderColor: 'rgba(250,204,21,0.4)', borderRadius: borderRadius.sm, padding: spacing.sm },
   pendingText: { fontSize: 10, color: '#facc15', fontWeight: '500' },
-  tip: { fontSize: 10, color: tc.mutedForeground, marginTop: spacing.xs, opacity: 0.6 },
 }); };

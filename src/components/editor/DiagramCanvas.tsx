@@ -39,6 +39,15 @@ const DRIBBLE_AMP_FU = 0.8;     // Dribble wave amplitude
 const DRIBBLE_FREQ = 8;         // Dribble wave frequency
 
 const PAD = 6; // padding % of canvas
+const GRID_SIZE = 5; // snap grid in field units (0-100 space → 20x20 grid)
+
+// Snap a field coordinate to the nearest grid point
+function snapToGridPoint(pos: FieldPosition, gridSize: number): FieldPosition {
+  return {
+    x: Math.round(pos.x / gridSize) * gridSize,
+    y: Math.round(pos.y / gridSize) * gridSize,
+  };
+}
 
 // ── Position Tracker (matches renderer.py PositionTracker) ──────────
 function createPositionTracker(diagram: DiagramData) {
@@ -96,6 +105,7 @@ interface DiagramCanvasProps {
   tool: EditorState['tool'];
   selectedEntity: EditorState['selectedEntity'];
   pendingActionFrom: string | null;
+  snapToGrid: boolean;
   onDiagramChange: (diagram: DiagramData) => void;
   onSelectEntity: (entity: EditorState['selectedEntity']) => void;
   onPendingActionChange: (id: string | null) => void;
@@ -103,7 +113,7 @@ interface DiagramCanvasProps {
 }
 
 export function DiagramCanvas({
-  diagram, tool, selectedEntity, pendingActionFrom,
+  diagram, tool, selectedEntity, pendingActionFrom, snapToGrid,
   onDiagramChange, onSelectEntity, onPendingActionChange, onDragStateChange,
 }: DiagramCanvasProps) {
   const [size, setSize] = useState({ w: 300, h: 300 });
@@ -133,6 +143,11 @@ export function DiagramCanvas({
     y: Math.max(0, Math.min(100, 100 - ((sy - padPx) / fh) * 100)),
   }), [padPx, fw, fh]);
 
+  // Apply snap if enabled
+  const snap = useCallback((pos: FieldPosition): FieldPosition =>
+    snapToGrid ? snapToGridPoint(pos, GRID_SIZE) : pos
+  , [snapToGrid]);
+
   const findEntityAt = useCallback((fp: FieldPosition) => {
     for (const p of diagram.players) if (Math.hypot(p.position.x - fp.x, p.position.y - fp.y) < 4) return { type: 'player' as const, id: p.id };
     for (const b of diagram.balls) if (Math.hypot(b.position.x - fp.x, b.position.y - fp.y) < 4) return { type: 'ball' as const, id: b.id };
@@ -144,8 +159,9 @@ export function DiagramCanvas({
   // ── Touch handlers ────────────────────────────────────────────────
   const handlePress = useCallback((evt: any) => {
     const { locationX, locationY } = evt.nativeEvent;
-    const fp = toField(locationX, locationY);
-    if (tool === 'select') { onSelectEntity(findEntityAt(fp)); onPendingActionChange(null); return; }
+    const fpRaw = toField(locationX, locationY);
+    const fp = snap(fpRaw);
+    if (tool === 'select') { onSelectEntity(findEntityAt(fpRaw)); onPendingActionChange(null); return; }
     if (['attacker', 'defender', 'goalkeeper', 'neutral'].includes(tool)) {
       const role = tool.toUpperCase() as CustomPlayer['role'];
       const count = diagram.players.filter(p => p.role === role).length + 1;
@@ -155,22 +171,22 @@ export function DiagramCanvas({
     if (tool === 'ball') { onDiagramChange({ ...diagram, balls: [...diagram.balls, { id: generateId(), position: fp }] }); return; }
     if (tool === 'goal' || tool === 'minigoal') { onDiagramChange({ ...diagram, goals: [...diagram.goals, { id: generateId(), position: fp, rotation: 0, size: tool === 'goal' ? 'full' : 'mini' }] }); return; }
     if (tool === 'coneline') {
-      const cone = diagram.cones.find(c => Math.hypot(c.position.x - fp.x, c.position.y - fp.y) < 5);
+      const cone = diagram.cones.find(c => Math.hypot(c.position.x - fpRaw.x, c.position.y - fpRaw.y) < 5);
       if (!cone) return;
       if (!pendingActionFrom) { onPendingActionChange(cone.id); } else { if (pendingActionFrom !== cone.id) onDiagramChange({ ...diagram, coneLines: [...diagram.coneLines, { id: generateId(), fromConeId: pendingActionFrom, toConeId: cone.id }] }); onPendingActionChange(null); }
       return;
     }
     if (tool === 'pass') {
-      const pl = diagram.players.find(p => Math.hypot(p.position.x - fp.x, p.position.y - fp.y) < 5);
+      const pl = diagram.players.find(p => Math.hypot(p.position.x - fpRaw.x, p.position.y - fpRaw.y) < 5);
       if (!pl) return;
       if (!pendingActionFrom) { onPendingActionChange(pl.id); } else { if (pendingActionFrom !== pl.id) onDiagramChange({ ...diagram, actions: [...diagram.actions, { id: generateId(), type: 'PASS', fromPlayerId: pendingActionFrom, toPlayerId: pl.id }] }); onPendingActionChange(null); }
       return;
     }
     if (['run', 'dribble', 'shot'].includes(tool)) {
-      if (!pendingActionFrom) { const pl = diagram.players.find(p => Math.hypot(p.position.x - fp.x, p.position.y - fp.y) < 5); if (pl) onPendingActionChange(pl.id); }
+      if (!pendingActionFrom) { const pl = diagram.players.find(p => Math.hypot(p.position.x - fpRaw.x, p.position.y - fpRaw.y) < 5); if (pl) onPendingActionChange(pl.id); }
       else { onDiagramChange({ ...diagram, actions: [...diagram.actions, { id: generateId(), type: tool.toUpperCase() as any, playerId: pendingActionFrom, toPosition: fp }] }); onPendingActionChange(null); }
     }
-  }, [tool, diagram, pendingActionFrom, toField, findEntityAt, onDiagramChange, onSelectEntity, onPendingActionChange]);
+  }, [tool, diagram, pendingActionFrom, toField, snap, findEntityAt, onDiagramChange, onSelectEntity, onPendingActionChange]);
 
   const handleTouchStart = useCallback((evt: any) => {
     if (tool !== 'select') return;
@@ -192,12 +208,13 @@ export function DiagramCanvas({
   const handleTouchMove = useCallback((evt: any) => {
     if (!dragging || !selectedEntity) return;
     const fp = toField(evt.nativeEvent.locationX, evt.nativeEvent.locationY);
-    const np = { x: Math.max(0, Math.min(100, fp.x - dragOffset.current.x)), y: Math.max(0, Math.min(100, fp.y - dragOffset.current.y)) };
+    const raw = { x: Math.max(0, Math.min(100, fp.x - dragOffset.current.x)), y: Math.max(0, Math.min(100, fp.y - dragOffset.current.y)) };
+    const np = snap(raw);
     if (selectedEntity.type === 'player') onDiagramChange({ ...diagram, players: diagram.players.map(p => p.id === selectedEntity.id ? { ...p, position: np } : p) });
     else if (selectedEntity.type === 'cone') onDiagramChange({ ...diagram, cones: diagram.cones.map(c => c.id === selectedEntity.id ? { ...c, position: np } : c) });
     else if (selectedEntity.type === 'ball') onDiagramChange({ ...diagram, balls: diagram.balls.map(b => b.id === selectedEntity.id ? { ...b, position: np } : b) });
     else if (selectedEntity.type === 'goal') onDiagramChange({ ...diagram, goals: diagram.goals.map(g => g.id === selectedEntity.id ? { ...g, position: np } : g) });
-  }, [dragging, selectedEntity, toField, diagram, onDiagramChange]);
+  }, [dragging, selectedEntity, toField, snap, diagram, onDiagramChange]);
 
   const handleTouchEnd = useCallback(() => { setDragging(false); onDragStateChange?.(false); }, [onDragStateChange]);
 
@@ -213,18 +230,63 @@ export function DiagramCanvas({
 
   // ── Rendering ─────────────────────────────────────────────────────
 
-  // Grass: vertical stripes
+  // Grass: vertical stripes — aligned to field boundaries for symmetry
+  // Each stripe = 10 field units (2 grid cells), so 10 stripes across the 0-100 field.
+  // Grid dots at every 5 FU land exactly at stripe edges or stripe centers.
+  // Extra stripes extend into padding so the pattern covers the full canvas.
   const renderGrass = () => {
     const els: React.ReactNode[] = [];
-    const stripeW = fScale(10);
-    const start = Math.floor((padPx - stripeW * 2) / stripeW) * stripeW;
-    let i = 0;
-    for (let x = start; x < size.w + stripeW; x += stripeW) {
-      const idx = Math.round(x / stripeW);
-      els.push(<Rect key={`gs-${i++}`} x={x} y={0} width={stripeW} height={size.h} fill={idx % 2 === 0 ? GRASS_LIGHT : GRASS_DARK} />);
+    const stripeWidthFU = 10;
+    const stripeWidthPx = fScale(stripeWidthFU);
+    const fieldLeftPx = toSvg(0, 0).x;   // padPx
+    const fieldRightPx = toSvg(100, 0).x;
+
+    // Left padding stripe — continues the pattern (stripe 0 is light, so stripe -1 is dark)
+    els.push(<Rect key="gs-left" x={0} y={0} width={fieldLeftPx} height={size.h} fill={GRASS_DARK} />);
+
+    // 10 field stripes
+    for (let i = 0; i < 10; i++) {
+      const leftFU = i * stripeWidthFU;
+      const leftSvg = toSvg(leftFU, 0).x;
+      const rightSvg = toSvg(leftFU + stripeWidthFU, 0).x;
+      els.push(
+        <Rect
+          key={`gs-${i}`}
+          x={leftSvg}
+          y={0}
+          width={rightSvg - leftSvg}
+          height={size.h}
+          fill={i % 2 === 0 ? GRASS_LIGHT : GRASS_DARK}
+        />
+      );
     }
+
+    // Right padding stripe — stripe 10 continues the pattern (even = light)
+    els.push(<Rect key="gs-right" x={fieldRightPx} y={0} width={size.w - fieldRightPx} height={size.h} fill={GRASS_LIGHT} />);
+
     return els;
   };
+
+  // Grid dots overlay (shown when snap is enabled)
+  const renderGrid = useMemo(() => {
+    if (!snapToGrid) return null;
+    const dots: React.ReactNode[] = [];
+    for (let gx = 0; gx <= 100; gx += GRID_SIZE) {
+      for (let gy = 0; gy <= 100; gy += GRID_SIZE) {
+        const p = toSvg(gx, gy);
+        dots.push(
+          <Circle
+            key={`grid-${gx}-${gy}`}
+            cx={p.x}
+            cy={p.y}
+            r={1.2}
+            fill="rgba(255,255,255,0.18)"
+          />
+        );
+      }
+    }
+    return dots;
+  }, [snapToGrid, toSvg]);
 
   // Field markings
   const renderMarkings = () => {
@@ -497,6 +559,7 @@ export function DiagramCanvas({
       >
         <Svg width={size.w} height={size.h} viewBox={`0 0 ${size.w} ${size.h}`}>
           {renderGrass()}
+          {renderGrid}
           {renderMarkings()}
           {renderConeLines()}
           {renderCones()}

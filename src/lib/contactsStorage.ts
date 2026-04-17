@@ -7,7 +7,7 @@ export interface Contact {
   phone: string;
 }
 
-const CONTACTS_KEY = 'drillforge_contacts';
+const CONTACTS_KEY = 'tactiq_contacts';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;

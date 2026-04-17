@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const THEME_KEY = 'drillforge_theme_mode';
+const THEME_KEY = 'tactiq_theme_mode';
 
 export type ThemeMode = 'dark' | 'light';
 

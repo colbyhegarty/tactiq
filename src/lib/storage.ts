@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Drill, UserProfile, AgeGroup, SkillLevel } from '../types/drill';
 
-const SAVED_DRILLS_KEY = 'drillforge_saved_drills';
-const USER_PROFILE_KEY = 'drillforge_user_profile';
+const SAVED_DRILLS_KEY = 'tactiq_saved_drills';
+const USER_PROFILE_KEY = 'tactiq_user_profile';
 
 export const defaultProfile: UserProfile = {
   name: '',

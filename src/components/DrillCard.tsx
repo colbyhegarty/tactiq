@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
+import { LockedDrillOverlay } from '../subscription/LockedDrillOverlay';
 import { borderRadius, spacing } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { Drill } from '../types/drill';
@@ -25,6 +26,8 @@ interface DrillCardProps {
   isSaved?: boolean;
   compact?: boolean;
   onQuickView?: (drill: Drill) => void;
+  /** When true, diagram is obscured with a lock overlay and interactions are gated */
+  isLocked?: boolean;
 }
 
 export function DrillCard({
@@ -34,6 +37,7 @@ export function DrillCard({
   isSaved = false,
   compact = false,
   onQuickView,
+  isLocked = false,
 }: DrillCardProps) {
   const { colors: tc } = useTheme();
   const styles = create_styles(tc);
@@ -75,14 +79,21 @@ export function DrillCard({
       <View style={styles.imageContainer}>
         <TouchableOpacity
           style={styles.imageContainer}
-          onPress={() => setShowOverlay(!showOverlay)}
+          onPress={() => {
+            if (isLocked) {
+              // For locked drills, tapping anywhere triggers onPress (which shows paywall)
+              onPress(drill);
+            } else {
+              setShowOverlay(!showOverlay);
+            }
+          }}
           activeOpacity={0.95}
         >
           {drill.svg_url && !imageError ? (
             <>
               <Image
                 source={{ uri: drill.svg_url + '?v=3' }}
-                style={styles.image}
+                style={[styles.image, isLocked && { opacity: 0.15 }]}
                 contentFit="cover"
                 transition={200}
                 onLoadStart={() => setImageLoading(true)}
@@ -101,20 +112,25 @@ export function DrillCard({
             </View>
           )}
 
-          {/* Bookmark Button */}
-          <TouchableOpacity
-            style={[styles.bookmarkButton, isSaved && styles.bookmarkButtonSaved]}
-            onPress={(e) => { e.stopPropagation?.(); onSave?.(drill); }}
-          >
-            {isSaved ? (
-              <BookmarkCheck size={compact ? 14 : 16} color={tc.primaryForeground} fill={tc.primaryForeground} />
-            ) : (
-              <Bookmark size={compact ? 14 : 16} color={tc.mutedForeground} />
-            )}
-          </TouchableOpacity>
+          {/* Lock overlay for locked drills */}
+          {isLocked && <LockedDrillOverlay />}
 
-          {/* Tap overlay with Quick View + View Drill */}
-          {showOverlay && (
+          {/* Bookmark Button — hidden for locked drills */}
+          {!isLocked && (
+            <TouchableOpacity
+              style={[styles.bookmarkButton, isSaved && styles.bookmarkButtonSaved]}
+              onPress={(e) => { e.stopPropagation?.(); onSave?.(drill); }}
+            >
+              {isSaved ? (
+                <BookmarkCheck size={compact ? 14 : 16} color={tc.primaryForeground} fill={tc.primaryForeground} />
+              ) : (
+                <Bookmark size={compact ? 14 : 16} color={tc.mutedForeground} />
+              )}
+            </TouchableOpacity>
+          )}
+
+          {/* Tap overlay with Quick View + View Drill — hidden for locked drills */}
+          {showOverlay && !isLocked && (
             <View style={styles.overlay}>
               {onQuickView && (
                 <TouchableOpacity style={styles.overlayBtnWhite} onPress={() => { setShowOverlay(false); onQuickView(drill); }}>

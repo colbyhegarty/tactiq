@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
+import { usePaywallGate, PaywallModal } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Session } from '../../src/types/session';
@@ -141,12 +142,20 @@ export default function SessionsScreen() {
   const [filterDate, setFilterDate] = useState<string | null>(null);
   const [calendarOpen, setCalendarOpen] = useState(false);
   const router = useRouter();
+  const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
 
   useFocusEffect(useCallback(() => { loadSessions(); }, []));
 
   const loadSessions = async () => {
     const sess = await getSessions();
     setSessions(sess.sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
+  };
+
+  /** Gated session creation — free users can only have 1 session */
+  const handleCreateSession = async () => {
+    const allowed = await gate('create_session');
+    if (!allowed) return;
+    router.push('/session-editor');
   };
 
   const handleDelete = (id: string, title: string) => {
@@ -160,6 +169,8 @@ export default function SessionsScreen() {
   };
 
   const handleDuplicate = async (id: string) => {
+    const allowed = await gate('create_session');
+    if (!allowed) return;
     const dup = await duplicateSession(id);
     if (dup) setSessions(prev => [dup, ...prev]);
   };
@@ -249,7 +260,7 @@ export default function SessionsScreen() {
           <TouchableOpacity style={[st.headerBtn, (calendarOpen || filterDate) && st.headerBtnActive]} onPress={toggleCalendar}>
             <Calendar size={22} color={(calendarOpen || filterDate) ? tc.primaryForeground : tc.foreground} />
           </TouchableOpacity>
-          <TouchableOpacity style={st.headerBtn} onPress={() => router.push('/session-editor')}>
+          <TouchableOpacity style={st.headerBtn} onPress={handleCreateSession}>
             <Plus size={22} color={tc.foreground} />
           </TouchableOpacity>
         </View>
@@ -282,7 +293,7 @@ export default function SessionsScreen() {
             <Text style={st.emptyTitle}>{filterDate ? 'No sessions on this day' : 'No sessions yet'}</Text>
             <Text style={st.emptySubtitle}>{filterDate ? 'Try selecting a different date' : 'Create your first training session'}</Text>
             {!filterDate && (
-              <TouchableOpacity style={st.createButton} onPress={() => router.push('/session-editor')}>
+              <TouchableOpacity style={st.createButton} onPress={handleCreateSession}>
                 <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
               </TouchableOpacity>
             )}
@@ -290,12 +301,18 @@ export default function SessionsScreen() {
         ) : (
           <>
             {displayedSessions.map(renderSessionCard)}
-            <TouchableOpacity style={st.createOutlineButton} onPress={() => router.push('/session-editor')}>
+            <TouchableOpacity style={st.createOutlineButton} onPress={handleCreateSession}>
               <Plus size={16} color={tc.foreground} /><Text style={st.createOutlineText}>Create New Session</Text>
             </TouchableOpacity>
           </>
         )}
       </ScrollView>
+
+      <PaywallModal
+        visible={paywallVisible}
+        onDismiss={dismissPaywall}
+        reason={paywallReason}
+      />
     </SafeAreaView>
   );
 }

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CustomDrill, DiagramData, CustomDrillFormData } from '../types/customDrill';
 
-const CUSTOM_DRILLS_KEY = 'drillforge_custom_drills';
+const CUSTOM_DRILLS_KEY = 'tactiq_custom_drills';
 
 // Default empty diagram
 export const getEmptyDiagram = (): DiagramData => ({

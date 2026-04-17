@@ -39,13 +39,58 @@ export default function DrillEditorScreen() {
   const params = useLocalSearchParams<{ editId?: string; templateId?: string }>();
 
   const [tool, setTool] = useState<EditorState['tool']>('select');
-  const [diagram, setDiagram] = useState<DiagramData>(getEmptyDiagram());
+  const [diagram, setDiagramRaw] = useState<DiagramData>(getEmptyDiagram());
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity | null>(null);
   const [pendingActionFrom, setPendingActionFrom] = useState<string | null>(null);
   const [formData, setFormData] = useState<CustomDrillFormData>(getEmptyFormData());
   const [existingId, setExistingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState<string[]>([]);
+  const [snapToGrid, setSnapToGrid] = useState(true);
+
+  // Undo history — stores previous diagram states (max 50)
+  const undoStack = useRef<DiagramData[]>([]);
+  const isDragging = useRef(false);
+  const dragStartDiagram = useRef<DiagramData | null>(null);
+
+  const setDiagram = useCallback((next: DiagramData | ((prev: DiagramData) => DiagramData)) => {
+    setDiagramRaw(prev => {
+      const nextVal = typeof next === 'function' ? next(prev) : next;
+      // During drag, only capture the state at drag start (not every move)
+      if (isDragging.current) {
+        if (!dragStartDiagram.current) {
+          dragStartDiagram.current = prev;
+        }
+      } else {
+        undoStack.current = [...undoStack.current.slice(-49), prev];
+      }
+      return nextVal;
+    });
+  }, []);
+
+  const handleDragStateChange = useCallback((dragging: boolean) => {
+    if (dragging) {
+      isDragging.current = true;
+      dragStartDiagram.current = null;
+    } else {
+      // Push the pre-drag state to undo when drag ends
+      if (dragStartDiagram.current) {
+        undoStack.current = [...undoStack.current.slice(-49), dragStartDiagram.current];
+        dragStartDiagram.current = null;
+      }
+      isDragging.current = false;
+    }
+    setCanScroll(!dragging);
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    if (undoStack.current.length === 0) return;
+    const prev = undoStack.current[undoStack.current.length - 1];
+    undoStack.current = undoStack.current.slice(0, -1);
+    setDiagramRaw(prev);
+    setSelectedEntity(null);
+    setPendingActionFrom(null);
+  }, []);
 
   // Collapsible sections
   const [toolsOpen, setToolsOpen] = useState(false);
@@ -164,9 +209,10 @@ export default function DrillEditorScreen() {
           {/* Canvas */}
           <DiagramCanvas
             diagram={diagram} tool={tool} selectedEntity={selectedEntity}
-            pendingActionFrom={pendingActionFrom} onDiagramChange={setDiagram}
+            pendingActionFrom={pendingActionFrom} snapToGrid={snapToGrid}
+            onDiagramChange={setDiagram}
             onSelectEntity={setSelectedEntity} onPendingActionChange={setPendingActionFrom}
-            onDragStateChange={(isDragging) => setCanScroll(!isDragging)}
+            onDragStateChange={handleDragStateChange}
           />
 
           {/* Tools - collapsible */}
@@ -177,7 +223,7 @@ export default function DrillEditorScreen() {
           {toolsOpen && (
             <View style={e.sectionBody}>
               <View style={e.sectionBodyInner}>
-                <ToolsPanel activeTool={tool} onToolChange={setTool} pendingActionFrom={pendingActionFrom} />
+                <ToolsPanel activeTool={tool} onToolChange={setTool} pendingActionFrom={pendingActionFrom} snapToGrid={snapToGrid} onSnapToggle={() => setSnapToGrid(v => !v)} canUndo={undoStack.current.length > 0} onUndo={handleUndo} />
               </View>
             </View>
           )}

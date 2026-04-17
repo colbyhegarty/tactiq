@@ -37,6 +37,7 @@ import { getSession } from '../src/lib/sessionStorage';
 import { getUserProfile } from '../src/lib/storage';
 import { borderRadius, spacing } from '../src/theme/colors';
 import { useTheme } from '../src/theme/ThemeContext';
+import { usePaywallGate, PaywallModal } from '../src/subscription';
 import { Drill, PdfSettings, defaultPdfSettings } from '../src/types/drill';
 import { Session, SessionActivity } from '../src/types/session';
 
@@ -260,9 +261,14 @@ export default function SessionViewScreen() {
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [pdfSettings, setPdfSettings] = useState<PdfSettings>(defaultPdfSettings);
+  const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
 
   const handleExportPDF = async () => {
     if (!session) return;
+    // Gate: free users cannot export
+    const allowed = await gate('export_pdf');
+    if (!allowed) return;
+
     setExporting(true);
     try {
       await exportAndSharePDF(session, drillDetails, pdfSettings);
@@ -273,6 +279,13 @@ export default function SessionViewScreen() {
     } finally {
       setExporting(false);
     }
+  };
+
+  const handleShareToContacts = async () => {
+    // Gate: free users cannot share
+    const allowed = await gate('share_session');
+    if (!allowed) return;
+    setShareModalOpen(true);
   };
 
   useEffect(() => {
@@ -441,7 +454,7 @@ export default function SessionViewScreen() {
             <Share2 size={16} color={tc.primaryForeground} />
             <Text style={v.shareBtnText}>{exporting ? 'Exporting...' : 'Export PDF'}</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={v.shareContactsBtn} onPress={() => setShareModalOpen(true)}>
+          <TouchableOpacity style={v.shareContactsBtn} onPress={handleShareToContacts}>
             <Mail size={16} color={tc.primary} />
             <Text style={v.shareContactsText}>Share to Contacts</Text>
           </TouchableOpacity>
@@ -454,6 +467,7 @@ export default function SessionViewScreen() {
 
       <DrillDetailModal drill={selectedDrill} isOpen={selectedDrill !== null} onClose={() => setSelectedDrill(null)} isSaved={false} onSave={() => {}} />
       <ShareSessionModal session={session} drillDetails={drillDetails} isOpen={shareModalOpen} onClose={() => setShareModalOpen(false)} />
+      <PaywallModal visible={paywallVisible} onDismiss={dismissPaywall} reason={paywallReason} />
     </SafeAreaView>
   );
 }
