@@ -26,7 +26,12 @@ export function PropertiesPanel({ diagram, selectedEntity, onDiagramChange, onDe
 
   const toggleMarkings = (val: boolean) => {
     if (val) onDiagramChange({ ...diagram, field: { ...diagram.field, markings: true, type: 'FULL', goals: 2 } });
-    else onDiagramChange({ ...diagram, field: { ...diagram.field, markings: false, goals: 0 } });
+    else onDiagramChange({ ...diagram, field: { ...diagram.field, markings: false, type: 'FULL', goals: 0 } });
+  };
+
+  const toggleHalfField = (val: boolean) => {
+    if (val) onDiagramChange({ ...diagram, field: { ...diagram.field, type: 'HALF', goals: 1 } });
+    else onDiagramChange({ ...diagram, field: { ...diagram.field, type: 'FULL', goals: 2 } });
   };
 
   const deleteEntity = (type: string, id: string) => {
@@ -52,6 +57,14 @@ export function PropertiesPanel({ diagram, selectedEntity, onDiagramChange, onDe
         <Text style={p.label}>Show Field Markings</Text>
         <Switch value={diagram.field.markings} onValueChange={toggleMarkings} trackColor={{ false: tc.border, true: tc.primary }} thumbColor="#fff" />
       </View>
+
+      {/* Half Field — only visible when markings are on */}
+      {diagram.field.markings && (
+        <View style={p.row}>
+          <Text style={p.label}>Half Field</Text>
+          <Switch value={diagram.field.type === 'HALF'} onValueChange={toggleHalfField} trackColor={{ false: tc.border, true: tc.primary }} thumbColor="#fff" />
+        </View>
+      )}
 
       <View style={p.divider} />
 

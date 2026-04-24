@@ -120,6 +120,16 @@ export function DiagramCanvas({
   const [dragging, setDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
+  // Half-field zoom only applies when markings are on AND type is HALF.
+  // When zoomed: x=25..75, y=50..100. Otherwise: full 0..100 range.
+  const isZoomed = diagram.field.markings && diagram.field.type === 'HALF';
+  const fieldXMin = isZoomed ? 25 : 0;
+  const fieldXMax = isZoomed ? 75 : 100;
+  const fieldXRange = fieldXMax - fieldXMin;
+  const fieldYMin = isZoomed ? 50 : 0;
+  const fieldYMax = 100;
+  const fieldYRange = fieldYMax - fieldYMin;
+
   const onLayout = (e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
     setSize({ w: width, h: width });
@@ -129,19 +139,19 @@ export function DiagramCanvas({
   const fw = size.w - padPx * 2;
   const fh = size.h - padPx * 2;
 
-  // Convert field units to SVG pixels
+  // Convert field units to SVG pixels — for element sizes (radius, width, etc.)
   const fScale = useCallback((fu: number) => (fu / 100) * fw, [fw]);
 
-  // Field coords → SVG pixels (y inverted: field y=0 is bottom)
+  // Field coords → SVG pixels (y inverted: field y=100 is top of screen)
   const toSvg = useCallback((fx: number, fy: number) => ({
-    x: padPx + (fx / 100) * fw,
-    y: padPx + ((100 - fy) / 100) * fh,
-  }), [padPx, fw, fh]);
+    x: padPx + ((fx - fieldXMin) / fieldXRange) * fw,
+    y: padPx + ((fieldYMax - fy) / fieldYRange) * fh,
+  }), [padPx, fw, fh, fieldXMin, fieldXRange, fieldYMax, fieldYRange]);
 
   const toField = useCallback((sx: number, sy: number): FieldPosition => ({
-    x: Math.max(0, Math.min(100, ((sx - padPx) / fw) * 100)),
-    y: Math.max(0, Math.min(100, 100 - ((sy - padPx) / fh) * 100)),
-  }), [padPx, fw, fh]);
+    x: Math.max(fieldXMin, Math.min(fieldXMax, fieldXMin + ((sx - padPx) / fw) * fieldXRange)),
+    y: Math.max(fieldYMin, Math.min(fieldYMax, fieldYMax - ((sy - padPx) / fh) * fieldYRange)),
+  }), [padPx, fw, fh, fieldXMin, fieldXMax, fieldXRange, fieldYMin, fieldYMax, fieldYRange]);
 
   // Apply snap if enabled
   const snap = useCallback((pos: FieldPosition): FieldPosition =>
@@ -237,15 +247,13 @@ export function DiagramCanvas({
   const renderGrass = () => {
     const els: React.ReactNode[] = [];
     const stripeWidthFU = 10;
-    const stripeWidthPx = fScale(stripeWidthFU);
-    const fieldLeftPx = toSvg(0, 0).x;   // padPx
-    const fieldRightPx = toSvg(100, 0).x;
 
-    // Left padding stripe — continues the pattern (stripe 0 is light, so stripe -1 is dark)
-    els.push(<Rect key="gs-left" x={0} y={0} width={fieldLeftPx} height={size.h} fill={GRASS_DARK} />);
+    // Fill entire canvas with base color first
+    els.push(<Rect key="gs-base" x={0} y={0} width={size.w} height={size.h} fill={GRASS_DARK} />);
 
-    // 10 field stripes
+    // Draw field stripes across the full 0-100 range — toSvg handles mapping
     for (let i = 0; i < 10; i++) {
+      if (i % 2 !== 0) continue; // only draw light stripes on top of dark base
       const leftFU = i * stripeWidthFU;
       const leftSvg = toSvg(leftFU, 0).x;
       const rightSvg = toSvg(leftFU + stripeWidthFU, 0).x;
@@ -256,13 +264,10 @@ export function DiagramCanvas({
           y={0}
           width={rightSvg - leftSvg}
           height={size.h}
-          fill={i % 2 === 0 ? GRASS_LIGHT : GRASS_DARK}
+          fill={GRASS_LIGHT}
         />
       );
     }
-
-    // Right padding stripe — stripe 10 continues the pattern (even = light)
-    els.push(<Rect key="gs-right" x={fieldRightPx} y={0} width={size.w - fieldRightPx} height={size.h} fill={GRASS_LIGHT} />);
 
     return els;
   };
@@ -271,8 +276,13 @@ export function DiagramCanvas({
   const renderGrid = useMemo(() => {
     if (!snapToGrid) return null;
     const dots: React.ReactNode[] = [];
-    for (let gx = 0; gx <= 100; gx += GRID_SIZE) {
-      for (let gy = 0; gy <= 100; gy += GRID_SIZE) {
+    // Only render dots within the visible field range
+    const gxStart = Math.ceil(fieldXMin / GRID_SIZE) * GRID_SIZE;
+    const gxEnd = Math.floor(fieldXMax / GRID_SIZE) * GRID_SIZE;
+    const gyStart = Math.ceil(fieldYMin / GRID_SIZE) * GRID_SIZE;
+    const gyEnd = Math.floor(fieldYMax / GRID_SIZE) * GRID_SIZE;
+    for (let gx = gxStart; gx <= gxEnd; gx += GRID_SIZE) {
+      for (let gy = gyStart; gy <= gyEnd; gy += GRID_SIZE) {
         const p = toSvg(gx, gy);
         dots.push(
           <Circle
@@ -286,7 +296,7 @@ export function DiagramCanvas({
       }
     }
     return dots;
-  }, [snapToGrid, toSvg]);
+  }, [snapToGrid, toSvg, fieldXMin, fieldXMax, fieldYMin, fieldYMax]);
 
   // Field markings
   const renderMarkings = () => {
@@ -294,13 +304,16 @@ export function DiagramCanvas({
     const els: React.ReactNode[] = [];
     const lw = 1.5;
 
-    // Halfway line
+    // Halfway line — always draw (it's the bottom boundary in half-field mode)
     const hl = toSvg(0, 50), hr = toSvg(100, 50);
     els.push(<Line key="half" x1={hl.x} y1={hl.y} x2={hr.x} y2={hl.y} stroke={LINE_COLOR} strokeWidth={lw} />);
-    // Center circle
-    const cc = toSvg(50, 50);
-    els.push(<Circle key="cc" cx={cc.x} cy={cc.y} r={fScale(10)} stroke={LINE_COLOR} strokeWidth={lw} fill="none" />);
-    els.push(<Circle key="ccd" cx={cc.x} cy={cc.y} r={2} fill={LINE_COLOR} />);
+
+    // Center circle + dot — only in full field mode (gets cut off in half)
+    if (!isZoomed) {
+      const cc = toSvg(50, 50);
+      els.push(<Circle key="cc" cx={cc.x} cy={cc.y} r={fScale(10)} stroke={LINE_COLOR} strokeWidth={lw} fill="none" />);
+      els.push(<Circle key="ccd" cx={cc.x} cy={cc.y} r={2} fill={LINE_COLOR} />);
+    }
 
     const drawPenaltyArea = (goalY: number) => {
       const into = goalY === 100 ? -1 : 1;

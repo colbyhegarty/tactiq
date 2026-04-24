@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Bookmark, BookmarkCheck, Clock, Target, Users } from 'lucide-react-native';
+import { Bookmark, BookmarkCheck, Clock, Eye, Search, Target, Users } from 'lucide-react-native';
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
@@ -133,12 +133,20 @@ export function DrillCard({
           {showOverlay && !isLocked && (
             <View style={styles.overlay}>
               {onQuickView && (
-                <TouchableOpacity style={styles.overlayBtnWhite} onPress={() => { setShowOverlay(false); onQuickView(drill); }}>
-                  <Text style={styles.overlayBtnWhiteText}>Quick View</Text>
+                <TouchableOpacity style={[styles.overlayBtnWhite, compact && styles.overlayBtnCompact]} onPress={() => { setShowOverlay(false); onQuickView(drill); }}>
+                  {compact ? (
+                    <Search size={18} color={tc.primary} />
+                  ) : (
+                    <Text style={styles.overlayBtnWhiteText}>Quick View</Text>
+                  )}
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={styles.overlayBtnGreen} onPress={() => { setShowOverlay(false); onPress(drill); }}>
-                <Text style={styles.overlayBtnGreenText}>View Drill</Text>
+              <TouchableOpacity style={[styles.overlayBtnGreen, compact && styles.overlayBtnCompact]} onPress={() => { setShowOverlay(false); onPress(drill); }}>
+                {compact ? (
+                  <Eye size={18} color="#fff" />
+                ) : (
+                  <Text style={styles.overlayBtnGreenText}>View Drill</Text>
+                )}
               </TouchableOpacity>
             </View>
           )}
@@ -365,6 +373,11 @@ function create_styles(tc: any) { return StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 8,
+  },
+  overlayBtnCompact: {
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 22,
   },
   overlayBtnGreenText: {
     color: '#fff',
