@@ -44,8 +44,7 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-mail-composer",
-      "expo-localization",
-      "react-native-purchases"
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true,
