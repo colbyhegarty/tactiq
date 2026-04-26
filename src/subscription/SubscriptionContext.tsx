@@ -1,5 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
+import Purchases, { PurchasesPackage, CustomerInfo, LOG_LEVEL } from 'react-native-purchases';
 import {
   EntitlementCheckResult,
   FREE_LIMITS,
@@ -12,6 +14,11 @@ import {
 import { getSessions } from '../lib/sessionStorage';
 import { getCustomDrills } from '../lib/customDrillStorage';
 import { isDrillFree } from './freeDrillConfig';
+import { track, setUserProperties } from '../lib/analytics';
+
+// ── RevenueCat Config ──────────────────────────────────────────────
+const REVENUECAT_API_KEY = 'test_oambzhfeqtJWlYMFjwgYhVTAlBr';
+const PRO_ENTITLEMENT_ID = 'pro';
 
 // ── Storage Key ────────────────────────────────────────────────────
 const SUB_STATE_KEY = 'tactiq_subscription_state';
@@ -27,23 +34,11 @@ const defaultState: SubscriptionState = {
 interface SubscriptionContextType {
   subscription: SubscriptionState;
   isLoaded: boolean;
-
-  /** Check if a gated action is allowed */
   checkEntitlement: (feature: GatedFeature) => Promise<EntitlementCheckResult>;
-
-  /** Check if a specific drill is unlocked for this user */
   isDrillUnlocked: (drillId: string) => boolean;
-
-  /** Mock purchase — replace body with RevenueCat later */
   purchase: (period: SubscriptionPeriod) => Promise<boolean>;
-
-  /** Restore purchases */
   restore: () => Promise<boolean>;
-
-  /** Mark onboarding paywall as seen */
   markOnboardingPaywallSeen: () => void;
-
-  /** DEV ONLY: toggle free ↔ pro */
   __devToggleTier: () => void;
 }
 
@@ -58,6 +53,12 @@ const SubscriptionContext = createContext<SubscriptionContextType>({
   __devToggleTier: () => {},
 });
 
+// ── Helper: extract tier from RevenueCat CustomerInfo ──────────────
+function tierFromCustomerInfo(info: CustomerInfo): { tier: SubscriptionTier; isProUser: boolean } {
+  const isPro = info.entitlements.active[PRO_ENTITLEMENT_ID] !== undefined;
+  return { tier: isPro ? 'pro' : 'free', isProUser: isPro };
+}
+
 // ── Provider ───────────────────────────────────────────────────────
 
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
@@ -65,15 +66,38 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(SUB_STATE_KEY)
-      .then((stored) => {
+    async function init() {
+      // Load persisted local state (for hasSeenOnboardingPaywall, etc.)
+      try {
+        const stored = await AsyncStorage.getItem(SUB_STATE_KEY);
         if (stored) {
-          try {
-            setSubscription({ ...defaultState, ...JSON.parse(stored) });
-          } catch {}
+          setSubscription((prev) => ({ ...prev, ...JSON.parse(stored) }));
         }
-      })
-      .finally(() => setIsLoaded(true));
+      } catch {}
+
+      // Initialize RevenueCat
+      try {
+        if (__DEV__) {
+          Purchases.setLogLevel(LOG_LEVEL.DEBUG);
+        }
+
+        Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+
+        // Check current entitlements
+        const customerInfo = await Purchases.getCustomerInfo();
+        const { tier, isProUser } = tierFromCustomerInfo(customerInfo);
+        setSubscription((prev) => ({ ...prev, tier, isProUser }));
+        setUserProperties({ tier });
+
+        if (__DEV__) console.log('[RevenueCat] Initialized — tier:', tier);
+      } catch (err) {
+        if (__DEV__) console.warn('[RevenueCat] Init failed:', err);
+      }
+
+      setIsLoaded(true);
+    }
+
+    init();
   }, []);
 
   const updateState = useCallback((updates: Partial<SubscriptionState>) => {
@@ -150,34 +174,73 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     [subscription.isProUser],
   );
 
-  // ── Mock Purchase ──────────────────────────────────────────────
-  // TODO: Replace with RevenueCat:
-  //   import Purchases from 'react-native-purchases';
-  //   const { customerInfo } = await Purchases.purchasePackage(pkg);
-  //   const isPro = customerInfo.entitlements.active['pro'] !== undefined;
+  // ── Purchase via RevenueCat ────────────────────────────────────
   const purchase = useCallback(
     async (period: SubscriptionPeriod): Promise<boolean> => {
-      await new Promise((r) => setTimeout(r, 800));
-      const product = period === 'monthly' ? PRODUCTS.monthly : PRODUCTS.annual;
-      updateState({
-        tier: 'pro',
-        isProUser: true,
-        period,
-        productId: product.id,
-        expiresAt: new Date(
-          Date.now() + (period === 'monthly' ? 30 : 365) * 24 * 60 * 60 * 1000,
-        ).toISOString(),
-      });
-      return true;
+      track('purchase_started', { plan: period });
+
+      try {
+        const offerings = await Purchases.getOfferings();
+        const currentOffering = offerings.current;
+
+        if (!currentOffering) {
+          throw new Error('No offerings configured in RevenueCat');
+        }
+
+        const pkg: PurchasesPackage | undefined =
+          period === 'annual' ? currentOffering.annual : currentOffering.monthly;
+
+        if (!pkg) {
+          throw new Error(`No ${period} package found in current offering`);
+        }
+
+        const { customerInfo } = await Purchases.purchasePackage(pkg);
+        const { tier, isProUser } = tierFromCustomerInfo(customerInfo);
+
+        updateState({ tier, isProUser, period });
+        track('purchase_completed', { plan: period });
+        setUserProperties({ tier });
+
+        return isProUser;
+      } catch (err: any) {
+        if (err.userCancelled) {
+          track('purchase_failed', { plan: period, error: 'user_cancelled' });
+          return false;
+        }
+
+        track('purchase_failed', { plan: period, error: err.message });
+        if (__DEV__) console.warn('[RevenueCat] Purchase error:', err);
+        Alert.alert('Purchase Failed', 'Something went wrong. Please try again.');
+        return false;
+      }
     },
     [updateState],
   );
 
-  // ── Mock Restore ───────────────────────────────────────────────
+  // ── Restore via RevenueCat ─────────────────────────────────────
   const restore = useCallback(async (): Promise<boolean> => {
-    await new Promise((r) => setTimeout(r, 600));
-    return subscription.isProUser;
-  }, [subscription.isProUser]);
+    track('restore_started', {});
+
+    try {
+      const customerInfo = await Purchases.restorePurchases();
+      const { tier, isProUser } = tierFromCustomerInfo(customerInfo);
+
+      updateState({ tier, isProUser });
+      track('restore_completed', { had_purchase: isProUser });
+      setUserProperties({ tier });
+
+      if (!isProUser) {
+        Alert.alert('No Purchase Found', 'We couldn\'t find a previous Pro subscription for this Apple ID.');
+      }
+
+      return isProUser;
+    } catch (err: any) {
+      if (__DEV__) console.warn('[RevenueCat] Restore error:', err);
+      Alert.alert('Restore Failed', 'Something went wrong. Please try again.');
+      track('restore_completed', { had_purchase: false });
+      return false;
+    }
+  }, [updateState]);
 
   const markOnboardingPaywallSeen = useCallback(() => {
     updateState({ hasSeenOnboardingPaywall: true });

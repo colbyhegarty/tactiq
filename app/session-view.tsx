@@ -38,6 +38,7 @@ import { getUserProfile } from '../src/lib/storage';
 import { borderRadius, spacing } from '../src/theme/colors';
 import { useTheme } from '../src/theme/ThemeContext';
 import { usePaywallGate, PaywallModal } from '../src/subscription';
+import { trackScreen, track } from '../src/lib/analytics';
 import { Drill, PdfSettings, defaultPdfSettings } from '../src/types/drill';
 import { Session, SessionActivity } from '../src/types/session';
 
@@ -269,6 +270,7 @@ export default function SessionViewScreen() {
     const allowed = await gate('export_pdf');
     if (!allowed) return;
 
+    track('session_exported_pdf', { session_id: session.id });
     setExporting(true);
     try {
       await exportAndSharePDF(session, drillDetails, pdfSettings);
@@ -285,6 +287,7 @@ export default function SessionViewScreen() {
     // Gate: free users cannot share
     const allowed = await gate('share_session');
     if (!allowed) return;
+    if (session) track('session_shared', { session_id: session.id, method: 'contacts' });
     setShareModalOpen(true);
   };
 

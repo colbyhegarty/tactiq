@@ -31,6 +31,7 @@ import {
 } from '../../src/lib/api';
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
 import { useSubscription, usePaywallGate, PaywallModal } from '../../src/subscription';
+import { trackScreen, track } from '../../src/lib/analytics';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -65,6 +66,7 @@ export default function LibraryScreen() {
   // Warm up backend on mount
   useEffect(() => {
     warmUpBackend();
+    trackScreen('Library');
   }, []);
 
   // Load filter options once
@@ -153,10 +155,12 @@ export default function LibraryScreen() {
   const handleViewDrill = async (drill: Drill) => {
     // If drill is locked, show paywall instead
     if (!isDrillUnlocked(drill.id)) {
+      track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
       await gate('view_locked_drill');
       return;
     }
 
+    track('drill_viewed', { drill_id: drill.id, drill_name: drill.name, category: drill.category });
     setIsLoadingDrill(true);
     try {
       const response = await fetchLibraryDrill(drill.id);

@@ -6,6 +6,7 @@ import { SubscriptionProvider } from '../src/subscription/SubscriptionContext';
 import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle';
 import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
 import { WelcomeModal } from '../src/onboarding/components/WelcomeModal';
+import { initAnalytics } from '../src/lib/analytics';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -14,6 +15,7 @@ function RootStack() {
 
   useEffect(() => {
     SplashScreen.hideAsync();
+    initAnalytics();
   }, []);
 
   return (

@@ -1,19 +1,8 @@
 import { useCallback, useState } from 'react';
 import { useSubscription } from './SubscriptionContext';
 import { GatedFeature } from '../types/subscription';
+import { track } from '../lib/analytics';
 
-/**
- * Hook that gates a user action behind a subscription check.
- *
- * Usage:
- *   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
- *
- *   const handleExport = async () => {
- *     const allowed = await gate('export_pdf');
- *     if (!allowed) return; // paywall was shown
- *     // ... proceed with export
- *   };
- */
 export function usePaywallGate() {
   const { checkEntitlement } = useSubscription();
   const [paywallVisible, setPaywallVisible] = useState(false);
@@ -25,6 +14,7 @@ export function usePaywallGate() {
       const result = await checkEntitlement(feature);
       if (result.allowed) return true;
 
+      track('paywall_shown', { trigger: feature, reason: result.reason });
       setPaywallReason(result.reason);
       setPaywallFeature(feature);
       setPaywallVisible(true);
@@ -34,10 +24,13 @@ export function usePaywallGate() {
   );
 
   const dismissPaywall = useCallback(() => {
+    if (paywallFeature) {
+      track('paywall_dismissed', { trigger: paywallFeature });
+    }
     setPaywallVisible(false);
     setPaywallReason(undefined);
     setPaywallFeature(undefined);
-  }, []);
+  }, [paywallFeature]);
 
   return {
     gate,

@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
 import { usePaywallGate, PaywallModal } from '../../src/subscription';
+import { trackScreen, track } from '../../src/lib/analytics';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Session } from '../../src/types/session';
@@ -144,7 +145,7 @@ export default function SessionsScreen() {
   const router = useRouter();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
 
-  useFocusEffect(useCallback(() => { loadSessions(); }, []));
+  useFocusEffect(useCallback(() => { loadSessions(); trackScreen('Sessions'); }, []));
 
   const loadSessions = async () => {
     const sess = await getSessions();
@@ -155,6 +156,7 @@ export default function SessionsScreen() {
   const handleCreateSession = async () => {
     const allowed = await gate('create_session');
     if (!allowed) return;
+    track('session_created', {});
     router.push('/session-editor');
   };
 
