@@ -74,7 +74,7 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
         </View>
         {activity.description && !drillData && <Text style={sm.descText}>{activity.description}</Text>}
         {activity.drill_svg_url && (
-          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=2' }} style={sm.diagram} contentFit="cover" /></View>
+          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=4' }} style={sm.diagram} contentFit="cover" /></View>
         )}
         {activity.library_drill_id && (
           <TouchableOpacity style={sm.viewDrillBtn} onPress={() => onViewDrill(activity)} disabled={loadingDrillId === activity.id}>
@@ -424,7 +424,7 @@ export default function SessionViewScreen() {
                     </View>
                     {activity.description && !drillData && <Text style={v.actDesc}>{activity.description}</Text>}
                     {activity.drill_svg_url && (
-                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=2' }} style={{ width: '100%', height: '100%' }} contentFit="cover" /></View>
+                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=4' }} style={{ width: '100%', height: '100%' }} contentFit="cover" /></View>
                     )}
                     {/* Expandable setup & instructions dropdown */}
                     <ActivityDetailsDropdown activity={activity} drillData={drillData || null} />

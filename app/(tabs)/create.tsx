@@ -110,7 +110,7 @@ export default function CreateScreen() {
                 <TouchableOpacity style={[s.pickerCard, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => handleSelectDrill(item.id)} activeOpacity={0.7}>
                   <View style={s.pickerThumb}>
                     {item.svg_url ? (
-                      <Image source={{ uri: item.svg_url + '?v=2' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+                      <Image source={{ uri: item.svg_url + '?v=4' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
                     ) : (
                       <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>No preview</Text>
                     )}

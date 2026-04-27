@@ -284,39 +284,40 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
 
   const renderGoals = () => {
     const els: React.ReactNode[] = [];
-    // Custom goals
+    // Helper: draw a goal frame with back line, nets, posts, crossbar (matching DiagramCanvas)
+    // When anchorFront=true, position is treated as the opening (for mini goals)
+    const drawGoal = (rawCx: number, rawCy: number, r: number, w: number, d: number, pw: number, ns: number, keyPrefix: string, anchorFront = false) => {
+      let cx = rawCx, cy = rawCy;
+      if (anchorFront) {
+        if (r === 0) cy = cy - d;
+        else if (r === 90) cx = cx - d;
+        else if (r === 180) cy = cy + d;
+        else cx = cx + d; // 270
+      }
+      let bl1: any, bl2: any, tl1: any, tl2: any;
+      const netLines: {x1:number,y1:number,x2:number,y2:number}[] = [];
+      if (r === 0) { bl1 = toSvg(cx-w/2,cy); bl2 = toSvg(cx+w/2,cy); tl1 = toSvg(cx-w/2,cy+d); tl2 = toSvg(cx+w/2,cy+d); for(let j=0;j<ns;j++){const nx=cx-w/2+j*(w/(ns-1));const a=toSvg(nx,cy),b=toSvg(nx,cy+d);netLines.push({x1:a.x,y1:a.y,x2:b.x,y2:b.y});} }
+      else if (r === 90) { bl1 = toSvg(cx,cy-w/2); bl2 = toSvg(cx,cy+w/2); tl1 = toSvg(cx+d,cy-w/2); tl2 = toSvg(cx+d,cy+w/2); for(let j=0;j<ns;j++){const ny=cy-w/2+j*(w/(ns-1));const a=toSvg(cx,ny),b=toSvg(cx+d,ny);netLines.push({x1:a.x,y1:a.y,x2:b.x,y2:b.y});} }
+      else if (r === 180) { bl1 = toSvg(cx-w/2,cy); bl2 = toSvg(cx+w/2,cy); tl1 = toSvg(cx-w/2,cy-d); tl2 = toSvg(cx+w/2,cy-d); for(let j=0;j<ns;j++){const nx=cx-w/2+j*(w/(ns-1));const a=toSvg(nx,cy),b=toSvg(nx,cy-d);netLines.push({x1:a.x,y1:a.y,x2:b.x,y2:b.y});} }
+      else { bl1 = toSvg(cx,cy-w/2); bl2 = toSvg(cx,cy+w/2); tl1 = toSvg(cx-d,cy-w/2); tl2 = toSvg(cx-d,cy+w/2); for(let j=0;j<ns;j++){const ny=cy-w/2+j*(w/(ns-1));const a=toSvg(cx,ny),b=toSvg(cx-d,ny);netLines.push({x1:a.x,y1:a.y,x2:b.x,y2:b.y});} }
+      // Back line (gray)
+      els.push(<Line key={`${keyPrefix}-back`} x1={bl1.x} y1={bl1.y} x2={bl2.x} y2={bl2.y} stroke="gray" strokeWidth={1.5} opacity={0.6} />);
+      // Net strings (gray, thin)
+      netLines.forEach((nl, j) => els.push(<Line key={`${keyPrefix}-net-${j}`} x1={nl.x1} y1={nl.y1} x2={nl.x2} y2={nl.y2} stroke="gray" strokeWidth={0.5} opacity={0.4} />));
+      // Posts (white)
+      els.push(<Line key={`${keyPrefix}-lp`} x1={bl1.x} y1={bl1.y} x2={tl1.x} y2={tl1.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
+      els.push(<Line key={`${keyPrefix}-rp`} x1={bl2.x} y1={bl2.y} x2={tl2.x} y2={tl2.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
+      // Crossbar (open front)
+      els.push(<Line key={`${keyPrefix}-cb`} x1={tl1.x} y1={tl1.y} x2={tl2.x} y2={tl2.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
+    };
+    // Custom full-size goals
     (drillJson.goals || []).forEach((g, i) => {
-      if (g.size === 'small') return; // skip small (mini_goals handle these)
-      const w = 8, d = 3, pw = 2.5;
-      const rot = g.rotation || 0;
-      const cx = g.position.x, cy = g.position.y;
-      const drawGoalFrame = (r: number) => {
-        let p1: any, p2: any, c1: any, c2: any;
-        if (r === 0) { p1 = toSvg(cx - w / 2, cy); p2 = toSvg(cx + w / 2, cy); c1 = toSvg(cx - w / 2, cy + d); c2 = toSvg(cx + w / 2, cy + d); }
-        else if (r === 90) { p1 = toSvg(cx, cy - w / 2); p2 = toSvg(cx, cy + w / 2); c1 = toSvg(cx + d, cy - w / 2); c2 = toSvg(cx + d, cy + w / 2); }
-        else if (r === 180) { p1 = toSvg(cx - w / 2, cy); p2 = toSvg(cx + w / 2, cy); c1 = toSvg(cx - w / 2, cy - d); c2 = toSvg(cx + w / 2, cy - d); }
-        else { p1 = toSvg(cx, cy - w / 2); p2 = toSvg(cx, cy + w / 2); c1 = toSvg(cx - d, cy - w / 2); c2 = toSvg(cx - d, cy + w / 2); }
-        els.push(<Line key={`gback-${i}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="gray" strokeWidth={1.5} opacity={0.6} />);
-        els.push(<Line key={`glp-${i}`} x1={p1.x} y1={p1.y} x2={c1.x} y2={c1.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
-        els.push(<Line key={`grp-${i}`} x1={p2.x} y1={p2.y} x2={c2.x} y2={c2.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
-        els.push(<Line key={`gcb-${i}`} x1={c1.x} y1={c1.y} x2={c2.x} y2={c2.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
-      };
-      drawGoalFrame(rot);
+      if (g.size === 'small') return;
+      drawGoal(g.position.x, g.position.y, g.rotation || 0, 8, 3, 2.5, Math.floor(8) + 1, `g-${i}`, false);
     });
-    // Mini goals
+    // Mini goals (no rotation flip — mini_goals array uses direct rotation)
     (drillJson.mini_goals || []).forEach((g, i) => {
-      const w = 4, d = 2, pw = 1.8;
-      const rot = ((g.rotation || 0) + 180) % 360;
-      const cx = g.position.x, cy = g.position.y;
-      let p1: any, p2: any, c1: any, c2: any;
-      if (rot === 0) { p1 = toSvg(cx - w / 2, cy); p2 = toSvg(cx + w / 2, cy); c1 = toSvg(cx - w / 2, cy + d); c2 = toSvg(cx + w / 2, cy + d); }
-      else if (rot === 90) { p1 = toSvg(cx, cy - w / 2); p2 = toSvg(cx, cy + w / 2); c1 = toSvg(cx + d, cy - w / 2); c2 = toSvg(cx + d, cy + w / 2); }
-      else if (rot === 180) { p1 = toSvg(cx - w / 2, cy); p2 = toSvg(cx + w / 2, cy); c1 = toSvg(cx - w / 2, cy - d); c2 = toSvg(cx + w / 2, cy - d); }
-      else { p1 = toSvg(cx, cy - w / 2); p2 = toSvg(cx, cy + w / 2); c1 = toSvg(cx - d, cy - w / 2); c2 = toSvg(cx - d, cy + w / 2); }
-      const ki = `mg-${i}`;
-      els.push(<Line key={`${ki}-back`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
-      els.push(<Line key={`${ki}-lp`} x1={p1.x} y1={p1.y} x2={c1.x} y2={c1.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
-      els.push(<Line key={`${ki}-rp`} x1={p2.x} y1={p2.y} x2={c2.x} y2={c2.y} stroke={GOAL_COLOR} strokeWidth={pw} strokeLinecap="round" />);
+      drawGoal(g.position.x, g.position.y, g.rotation || 0, 4, 2, 1.8, 5, `mg-${i}`, true);
     });
     return els;
   };
