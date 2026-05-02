@@ -33,7 +33,7 @@ export function QuickPreviewModal({ drill, isOpen, onClose, onViewFull, isSaved,
           <TouchableOpacity style={s.closeBtn} onPress={onClose}><X size={20} color={tc.foreground} /></TouchableOpacity>
           {drill.svg_url && (
             <View style={s.imgWrap}>
-              <Image source={{ uri: drill.svg_url + '?v=4' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+              <Image source={{ uri: drill.svg_url + '?v=17' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
             </View>
           )}
           <Text style={s.title} numberOfLines={2}>{drill.name}</Text>

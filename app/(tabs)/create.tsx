@@ -1,17 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { ChevronLeft, ChevronRight, Copy, PenTool, Search, Sparkles, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, StatusBar, ActivityIndicator,
-  ScrollView, Modal, TextInput, FlatList,
+  ActivityIndicator,
+  FlatList,
+  Modal,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Image } from 'expo-image';
-import { PenTool, Sparkles, Copy, Search, X, ChevronLeft, ChevronRight } from 'lucide-react-native';
 import { fetchDrills } from '../../src/lib/api';
-import { Drill } from '../../src/types/drill';
-import { spacing, borderRadius } from '../../src/theme/colors';
+import { PaywallModal, usePaywallGate } from '../../src/subscription';
+import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { usePaywallGate, PaywallModal } from '../../src/subscription';
+import { Drill } from '../../src/types/drill';
 
 const PICKER_PER_PAGE = 12;
 
@@ -110,7 +117,7 @@ export default function CreateScreen() {
                 <TouchableOpacity style={[s.pickerCard, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => handleSelectDrill(item.id)} activeOpacity={0.7}>
                   <View style={s.pickerThumb}>
                     {item.svg_url ? (
-                      <Image source={{ uri: item.svg_url + '?v=4' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+                      <Image source={{ uri: item.svg_url + '?v=17' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
                     ) : (
                       <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>No preview</Text>
                     )}

@@ -151,7 +151,7 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
                 />
               ) : drill.svg_url ? (
                 <View style={s.diagramContainer}>
-                  <Image source={{ uri: drill.svg_url + '?v=4' }} style={s.diagramImage} contentFit="contain" transition={200} />
+                  <Image source={{ uri: drill.svg_url + '?v=17' }} style={s.diagramImage} contentFit="contain" transition={200} />
                 </View>
               ) : (
                 <View style={s.diagramPlaceholder}><Text style={s.diagramPlaceholderText}>No diagram available</Text></View>

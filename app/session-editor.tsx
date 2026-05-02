@@ -33,11 +33,11 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
 import { supabase } from '../src/lib/supabase';
-import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { borderRadius, spacing } from '../src/theme/colors';
 import { useTheme } from '../src/theme/ThemeContext';
 import { EquipmentItem, Session, SessionActivity } from '../src/types/session';
@@ -292,7 +292,7 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
                       >
                         {drill.svg_url && (
                           <View style={ms.drillImg}>
-                            <Image source={{ uri: drill.svg_url + '?v=4' }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            <Image source={{ uri: drill.svg_url + '?v=17' }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                           </View>
                         )}
                         <View style={{ padding: spacing.sm }}>
@@ -452,7 +452,7 @@ function ActivityCard({ activity, index, startTime, onMoveUp, onMoveDown, onEdit
       </View>
       {activity.drill_svg_url && (
         <View style={ac.diagramWrap}>
-          <Image source={{ uri: activity.drill_svg_url + '?v=4' }} style={ac.diagram} contentFit="contain" />
+          <Image source={{ uri: activity.drill_svg_url + '?v=17' }} style={ac.diagram} contentFit="contain" />
         </View>
       )}
       {activity.description ? <Text style={ac.desc} numberOfLines={2}>{activity.description}</Text> : null}

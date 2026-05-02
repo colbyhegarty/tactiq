@@ -30,6 +30,14 @@ function calculateBounds(drill: DrillJsonData, padding = 8): Bounds {
   drill.goals?.forEach(g => { xs.push(g.position.x - 4, g.position.x + 4); ys.push(g.position.y - 3, g.position.y + 3); });
   drill.mini_goals?.forEach(g => { xs.push(g.position.x - 2, g.position.x + 2); ys.push(g.position.y - 2, g.position.y + 2); });
   drill.actions?.forEach(a => { if (a.to_position) { xs.push(a.to_position.x); ys.push(a.to_position.y); } });
+  // Include animation bounds if stored in drill data (ensures animated entities stay on canvas)
+  const animBounds = (drill as any).animation_bounds;
+  if (animBounds) {
+    if (animBounds.x_min != null) xs.push(animBounds.x_min);
+    if (animBounds.x_max != null) xs.push(animBounds.x_max);
+    if (animBounds.y_min != null) ys.push(animBounds.y_min);
+    if (animBounds.y_max != null) ys.push(animBounds.y_max);
+  }
   if (xs.length === 0) { xs.push(25, 75); } if (ys.length === 0) { ys.push(25, 75); }
   let xMin = Math.max(0, Math.min(...xs) - padding), xMax = Math.min(100, Math.max(...xs) + padding);
   let yMin = Math.max(0, Math.min(...ys) - padding), yMax = Math.min(100, Math.max(...ys) + padding);
@@ -41,6 +49,14 @@ function calculateBounds(drill: DrillJsonData, padding = 8): Bounds {
   const goals = drill.field?.goals ?? 0;
   if (markings && goals >= 1 && yMax > 70) yMax = 100;
   if (markings && goals >= 2 && yMin < 30) yMin = 0;
+  // Center x bounds on x=50 for markings drills so field lines aren't shifted
+  if (markings) {
+    const distLeft = 50 - xMin;
+    const distRight = xMax - 50;
+    const maxDist = Math.max(distLeft, distRight);
+    xMin = 50 - maxDist;
+    xMax = 50 + maxDist;
+  }
   return { xMin, xMax, yMin, yMax };
 }
 
@@ -68,14 +84,16 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
   const [svgW, setSvgW] = useState(300);
   const bounds = useMemo(() => {
     const b = calculateBounds(drillJson);
-    if (!targetAspectRatio) return b;
+    // Apply min_aspect_ratio from drill data (for too-vertical drills in main view)
+    const effectiveAR = targetAspectRatio || (drillJson as any).min_aspect_ratio || null;
+    if (!effectiveAR) return b;
     // Expand bounds to match target aspect ratio by adding field padding
     let bw = b.xMax - b.xMin;
     let bh = b.yMax - b.yMin;
     const currentRatio = bw / bh;
-    if (currentRatio < targetAspectRatio) {
+    if (currentRatio < effectiveAR) {
       // Too tall — expand width
-      const newW = bh * targetAspectRatio;
+      const newW = bh * effectiveAR;
       const cx = (b.xMin + b.xMax) / 2;
       b.xMin = Math.max(0, cx - newW / 2);
       b.xMax = Math.min(100, cx + newW / 2);
@@ -85,9 +103,9 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
         if (b.xMin === 0) b.xMax = Math.min(100, newW);
         else b.xMin = Math.max(0, b.xMax - newW);
       }
-    } else if (currentRatio > targetAspectRatio) {
+    } else if (currentRatio > effectiveAR) {
       // Too wide — expand height
-      const newH = bw / targetAspectRatio;
+      const newH = bw / effectiveAR;
       const cy = (b.yMin + b.yMax) / 2;
       b.yMin = Math.max(0, cy - newH / 2);
       b.yMax = Math.min(100, cy + newH / 2);
@@ -120,10 +138,11 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
   // Entity scale: like fScale but capped so entities don't get oversized on tight bounds (e.g. half-field).
   // When bw covers the full field (100), fScale and eScale are identical.
   // When bw is small (e.g. 50 for half-field), eScale limits growth to ~65 field-unit equivalent.
+  const entityScaleMultiplier = (drillJson as any).diagram_entity_scale || 1;
   const eScale = useCallback((fu: number) => {
     const maxBw = targetAspectRatio ? Math.max(bw * 0.8, 40) : Math.max(bw, 65);
-    return (fu / maxBw) * fw;
-  }, [bw, fw, targetAspectRatio]);
+    return (fu / maxBw) * fw * entityScaleMultiplier;
+  }, [bw, fw, targetAspectRatio, entityScaleMultiplier]);
 
   // ── Animation state ───────────────────────────────────────────────
   const keyframes = animationJson?.keyframes || [];
@@ -276,11 +295,14 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
     return <Line key={`cl-${i}`} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={CONE_COLOR} strokeWidth={2} opacity={0.8} />;
   });
 
-  const renderCones = () => (drillJson.cones || []).map((c, i) => {
+  const renderCones = () => {
+    const mScale = markings ? 2 / 3 : 1;
+    return (drillJson.cones || []).map((c, i) => {
     const p = toSvg(c.position.x, c.position.y);
-    const s = eScale(1.2);
+    const s = eScale(1.2) * mScale;
     return <Polygon key={`c-${i}`} points={`${p.x},${p.y - s - 2} ${p.x - s},${p.y + s} ${p.x + s},${p.y + s}`} fill={CONE_COLOR} stroke="black" strokeWidth={0.8} />;
   });
+  };
 
   const renderGoals = () => {
     const els: React.ReactNode[] = [];
@@ -316,19 +338,21 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
       drawGoal(g.position.x, g.position.y, g.rotation || 0, 8, 3, 2.5, Math.floor(8) + 1, `g-${i}`, false);
     });
     // Mini goals (no rotation flip — mini_goals array uses direct rotation)
+    const mgScale = markings ? 3 / 4 : 1;
     (drillJson.mini_goals || []).forEach((g, i) => {
-      drawGoal(g.position.x, g.position.y, g.rotation || 0, 4, 2, 1.8, 5, `mg-${i}`, true);
+      drawGoal(g.position.x, g.position.y, g.rotation || 0, 4 * mgScale, 2 * mgScale, 1.8 * mgScale, 5, `mg-${i}`, true);
     });
     return els;
   };
 
   const renderActions = useMemo(() => {
     const tracker = createTracker(drillJson);
-    const arrowOff = eScale(2.5);
-    const gapOff = eScale(0.8);
-    const lineW = eScale(0.35);
-    const ahW = eScale(1.2);
-    const ahL = eScale(1.0);
+    const mScale = markings ? 3 / 4 : 1;
+    const arrowOff = eScale(2.5) * mScale;
+    const gapOff = eScale(0.8) * mScale;
+    const lineW = eScale(0.35) * mScale;
+    const ahW = eScale(1.2) * mScale;
+    const ahL = eScale(1.0) * mScale;
 
     return (drillJson.actions || []).map((action, i) => {
       let fromFP: Position, toFP: Position;
@@ -363,7 +387,7 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
       const leX = ex - nx * curAhL, leY = ey - ny * curAhL;
 
       if (action.type === 'DRIBBLE') {
-        const amp = eScale(0.8);
+        const amp = eScale(0.8) * mScale;
         const ddx = leX - sx, ddy = leY - sy, segLen = Math.sqrt(ddx * ddx + ddy * ddy);
         const perpX = segLen > 0 ? -ddy / segLen : 0, perpY = segLen > 0 ? ddx / segLen : 0;
         let pathD = `M ${sx} ${sy}`;
@@ -376,28 +400,34 @@ export function DrillDiagramView({ drillJson, animationJson, mode, targetAspectR
     });
   }, [drillJson, toSvg, fScale, eScale, overridePos]);
 
-  const renderPlayers = () => (drillJson.players || []).map((player, i) => {
+  const renderPlayers = () => {
+    const pScale = markings ? 3 / 4 : 1;
+    return (drillJson.players || []).map((player, i) => {
     const pp = getEntityPos(player.id, player.position);
     const p = toSvg(pp.x, pp.y);
     const color = PLAYER_COLORS[player.role] || PLAYER_COLORS[player.role?.toLowerCase()] || '#888';
-    const r = eScale(1.8);
-    const sw = Math.max(1, eScale(0.4));
+    const r = eScale(1.8) * pScale;
+    const sw = Math.max(1, eScale(0.4) * pScale);
     return (
       <G key={`p-${i}`}>
         <Circle cx={p.x} cy={p.y} r={r} fill={color} stroke="white" strokeWidth={sw} />
       </G>
     );
   });
+  };
 
-  const renderBalls = () => (drillJson.balls || []).map((ball, i) => {
+  const renderBalls = () => {
+    const mScale = markings ? 3 / 4 : 1;
+    return (drillJson.balls || []).map((ball, i) => {
     const bp = getEntityPos(`ball_${i}`, ball.position);
     const p = toSvg(bp.x, bp.y);
-    const r = eScale(1.4);
-    const bsw = Math.max(0.8, eScale(0.3));
+    const r = eScale(1.4) * mScale;
+    const bsw = Math.max(0.8, eScale(0.3) * mScale);
     const pentR = r * 0.45;
     const pentPts = Array.from({ length: 5 }, (_, k) => { const a = (-Math.PI / 2) + (2 * Math.PI * k) / 5; return `${p.x + pentR * Math.cos(a)},${p.y + pentR * Math.sin(a)}`; }).join(' ');
     return <G key={`b-${i}`}><Circle cx={p.x} cy={p.y} r={r} fill="white" stroke="black" strokeWidth={bsw} /><Polygon points={pentPts} fill="black" /></G>;
   });
+  };
 
   const progressPct = totalDuration > 0 ? (currentTime / totalDuration) * 100 : 0;
   const fmtTime = (ms: number) => { const s = Math.floor(ms / 1000); return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`; };

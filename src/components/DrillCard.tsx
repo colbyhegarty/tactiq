@@ -92,7 +92,7 @@ export function DrillCard({
           {drill.svg_url && !imageError ? (
             <>
               <Image
-                source={{ uri: drill.svg_url + '?v=4' }}
+                source={{ uri: drill.svg_url + '?v=17' }}
                 style={[styles.image, isLocked && { opacity: 0.15 }]}
                 contentFit="cover"
                 transition={200}

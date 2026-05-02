@@ -31,14 +31,14 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrillDetailModal } from '../src/components/DrillDetailModal';
 import { ShareSessionModal } from '../src/components/ShareSessionModal';
+import { track } from '../src/lib/analytics';
 import { fetchDrillById } from '../src/lib/api';
 import { exportAndSharePDF } from '../src/lib/sessionPdf';
 import { getSession } from '../src/lib/sessionStorage';
 import { getUserProfile } from '../src/lib/storage';
+import { PaywallModal, usePaywallGate } from '../src/subscription';
 import { borderRadius, spacing } from '../src/theme/colors';
 import { useTheme } from '../src/theme/ThemeContext';
-import { usePaywallGate, PaywallModal } from '../src/subscription';
-import { trackScreen, track } from '../src/lib/analytics';
 import { Drill, PdfSettings, defaultPdfSettings } from '../src/types/drill';
 import { Session, SessionActivity } from '../src/types/session';
 
@@ -74,7 +74,7 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
         </View>
         {activity.description && !drillData && <Text style={sm.descText}>{activity.description}</Text>}
         {activity.drill_svg_url && (
-          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=4' }} style={sm.diagram} contentFit="cover" /></View>
+          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=17' }} style={sm.diagram} contentFit="cover" /></View>
         )}
         {activity.library_drill_id && (
           <TouchableOpacity style={sm.viewDrillBtn} onPress={() => onViewDrill(activity)} disabled={loadingDrillId === activity.id}>
@@ -424,7 +424,7 @@ export default function SessionViewScreen() {
                     </View>
                     {activity.description && !drillData && <Text style={v.actDesc}>{activity.description}</Text>}
                     {activity.drill_svg_url && (
-                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=4' }} style={{ width: '100%', height: '100%' }} contentFit="cover" /></View>
+                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=17' }} style={{ width: '100%', height: '100%' }} contentFit="cover" /></View>
                     )}
                     {/* Expandable setup & instructions dropdown */}
                     <ActivityDetailsDropdown activity={activity} drillData={drillData || null} />
