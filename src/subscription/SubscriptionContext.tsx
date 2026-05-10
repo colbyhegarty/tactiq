@@ -186,7 +186,7 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           throw new Error('No offerings configured in RevenueCat');
         }
 
-        const pkg: PurchasesPackage | undefined =
+        const pkg: PurchasesPackage | null | undefined =
           period === 'annual' ? currentOffering.annual : currentOffering.monthly;
 
         if (!pkg) {

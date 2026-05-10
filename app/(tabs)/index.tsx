@@ -36,11 +36,10 @@ import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
 
-
-
+// Number of drills to show per page
+const PAGE_SIZE = 20;
 
 export default function LibraryScreen() {
-  // Filter options from Supabase
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
   const styles = create_styles(tc);
@@ -50,7 +49,6 @@ export default function LibraryScreen() {
   const [ageGroups, setAgeGroups] = useState<string[]>([]);
   const durations = ['10 min.', '15 min.', '20 min.', '30 min.'];
 
-  // State
   const [filters, setFilters] = useState<DrillFilterParams>({});
   const [drillsMeta, setDrillsMeta] = useState<LibraryDrillMeta[]>([]);
   const [selectedDrill, setSelectedDrill] = useState<Drill | null>(null);
@@ -61,15 +59,18 @@ export default function LibraryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [gridCols, setGridCols] = useState<1 | 2>(1);
   const [quickPreviewDrill, setQuickPreviewDrill] = useState<Drill | null>(null);
+
+  // Pagination state
+  const [page, setPage] = useState(1);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+
   const flatListRef = useRef<FlatList>(null);
 
-  // Warm up backend on mount
   useEffect(() => {
     warmUpBackend();
     trackScreen('Library');
   }, []);
 
-  // Load filter options once
   useEffect(() => {
     async function loadFilterOptions() {
       try {
@@ -90,7 +91,6 @@ export default function LibraryScreen() {
     setError(null);
 
     try {
-      // Build server-side filters
       const serverFilters: DrillFilterParams = {};
       if (filters.category) serverFilters.category = filters.category;
       if (filters.difficulty) serverFilters.difficulty = filters.difficulty;
@@ -105,17 +105,10 @@ export default function LibraryScreen() {
 
       if (drillsRes.success) {
         let filteredDrills = drillsRes.drills;
-        // Client-side filters
-        filteredDrills = filterByPlayerCount(
-          filteredDrills,
-          filters.min_players,
-          filters.max_players,
-        );
+        filteredDrills = filterByPlayerCount(filteredDrills, filters.min_players, filters.max_players);
         filteredDrills = filterByDuration(filteredDrills, filters.duration);
         filteredDrills = filterByAgeGroup(filteredDrills, filters.age_group);
 
-        // Deterministic shuffle: consistent order that breaks alphabetical grouping
-        // Uses drill ID as seed so order is stable across sessions but looks random
         if (!filters.search) {
           filteredDrills = [...filteredDrills].sort((a, b) => {
             const hashA = a.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
@@ -125,6 +118,7 @@ export default function LibraryScreen() {
         }
 
         setDrillsMeta(filteredDrills);
+        setPage(1); // Reset to first page on new load
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load drills');
@@ -134,14 +128,14 @@ export default function LibraryScreen() {
     }
   }, [filters]);
 
-  // Load drills when filters change
   useEffect(() => {
     loadDrills();
   }, [loadDrills]);
 
-  // Scroll to top on filter change
+  // Scroll to top and reset page on filter change
   useEffect(() => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+    setPage(1);
   }, [filters]);
 
   const handleRefresh = () => {
@@ -149,19 +143,31 @@ export default function LibraryScreen() {
     loadDrills();
   };
 
-  // Map meta to display drills
-  const drillsForDisplay: Drill[] = useMemo(
+  const allDrills: Drill[] = useMemo(
     () => drillsMeta.map((meta) => mapLibraryDrillToDrill(meta)),
     [drillsMeta],
   );
 
-  // Show all drills - no batching needed with optimized cards
-  const visibleDrills = drillsForDisplay;
-  
+  // Only show drills up to current page
+  const visibleDrills = useMemo(
+    () => allDrills.slice(0, page * PAGE_SIZE),
+    [allDrills, page],
+  );
 
-  // Drill detail handler
-  const handleViewDrill = async (drill: Drill) => {
-    // If drill is locked, show paywall instead
+  const hasMore = visibleDrills.length < allDrills.length;
+
+  // Called when user reaches the end — load next page
+  const handleLoadMore = useCallback(() => {
+    if (isLoadingMore || !hasMore || isLoading) return;
+    setIsLoadingMore(true);
+    // Small delay so scroll settles before new items render
+    setTimeout(() => {
+      setPage((prev) => prev + 1);
+      setIsLoadingMore(false);
+    }, 100);
+  }, [isLoadingMore, hasMore, isLoading]);
+
+  const handleViewDrill = useCallback(async (drill: Drill) => {
     if (!isDrillUnlocked(drill.id)) {
       track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
       await gate('view_locked_drill');
@@ -195,10 +201,9 @@ export default function LibraryScreen() {
     } finally {
       setIsLoadingDrill(false);
     }
-  };
+  }, [isDrillUnlocked, gate]);
 
-  // Save/unsave drill
-  const handleSaveDrill = async (drill: Drill) => {
+  const handleSaveDrill = useCallback(async (drill: Drill) => {
     const currentlySaved = savedState[drill.id] ?? (await isDrillSaved(drill.id));
     if (currentlySaved) {
       await removeDrill(drill.id);
@@ -230,13 +235,12 @@ export default function LibraryScreen() {
       }
       setSavedState((prev) => ({ ...prev, [drill.id]: true }));
     }
-  };
+  }, [savedState]);
 
-  const isDrillCurrentlySaved = (drillId: string): boolean => {
+  const isDrillCurrentlySaved = useCallback((drillId: string): boolean => {
     return savedState[drillId] ?? false;
-  };
+  }, [savedState]);
 
-  // Inline empty/loading/error content shown inside the FlatList
   const renderEmpty = useCallback(() => {
     if (isLoading) {
       return (
@@ -279,13 +283,32 @@ export default function LibraryScreen() {
     );
   }, [isLoading, error, filters, loadDrills]);
 
-  const renderFooter = () => null;
+  const renderItem = useCallback(({ item }: { item: Drill }) => (
+    <View style={gridCols === 2 ? styles.gridItem : undefined}>
+      <DrillCard
+        drill={item}
+        onPress={handleViewDrill}
+        onSave={handleSaveDrill}
+        isSaved={isDrillCurrentlySaved(item.id)}
+        compact={gridCols === 2}
+        onQuickView={isDrillUnlocked(item.id) ? setQuickPreviewDrill : undefined}
+        isLocked={!isDrillUnlocked(item.id)}
+      />
+    </View>
+  ), [gridCols, handleViewDrill, handleSaveDrill, isDrillCurrentlySaved, isDrillUnlocked, styles]);
+  const renderFooter = useCallback(() => {
+    if (!isLoadingMore) return null;
+    return (
+      <View style={styles.loadMoreContainer}>
+        <ActivityIndicator size="small" color={tc.primary} />
+      </View>
+    );
+  }, [isLoadingMore, tc.primary]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={tc.background} />
 
-      {/* Header lives outside FlatList so TextInput focus is never lost */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
           <View style={styles.logoContainer}>
@@ -299,7 +322,7 @@ export default function LibraryScreen() {
           durations={durations}
           filters={filters}
           onFilterChange={setFilters}
-          resultCount={drillsForDisplay.length}
+          resultCount={allDrills.length}
           isLoading={isLoading}
         />
         <View style={styles.viewToggleRow}>
@@ -330,22 +353,13 @@ export default function LibraryScreen() {
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
         removeClippedSubviews={true}
-        initialNumToRender={8}
-        maxToRenderPerBatch={6}
-        windowSize={5}
-        renderItem={({ item }) => (
-          <View style={gridCols === 2 ? styles.gridItem : undefined}>
-            <DrillCard
-              drill={item}
-              onPress={handleViewDrill}
-              onSave={handleSaveDrill}
-              isSaved={isDrillCurrentlySaved(item.id)}
-              compact={gridCols === 2}
-              onQuickView={isDrillUnlocked(item.id) ? setQuickPreviewDrill : undefined}
-              isLocked={!isDrillUnlocked(item.id)}
-            />
-          </View>
-        )}
+        initialNumToRender={10}
+        maxToRenderPerBatch={8}
+        windowSize={7}
+        updateCellsBatchingPeriod={50}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.01}
+        renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
@@ -360,7 +374,6 @@ export default function LibraryScreen() {
         showsVerticalScrollIndicator={false}
       />
 
-      {/* Loading overlay for drill details */}
       {isLoadingDrill && (
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" color={tc.primary} />
@@ -368,7 +381,6 @@ export default function LibraryScreen() {
         </View>
       )}
 
-      {/* Drill Detail Modal */}
       <DrillDetailModal
         drill={selectedDrill}
         isOpen={selectedDrill !== null}
@@ -400,10 +412,7 @@ export default function LibraryScreen() {
 }
 
 function create_styles(tc: any) { return StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: tc.background,
-  },
+  container: { flex: 1, backgroundColor: tc.background },
   header: {
     paddingHorizontal: spacing.md,
     paddingTop: spacing.sm,
@@ -418,133 +427,49 @@ function create_styles(tc: any) { return StyleSheet.create({
     marginBottom: spacing.md,
   },
   logoContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: borderRadius.md,
-    backgroundColor: tc.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40, height: 40, borderRadius: borderRadius.md,
+    backgroundColor: tc.primary, justifyContent: 'center', alignItems: 'center',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: tc.foreground,
-  },
-  viewToggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: spacing.sm,
-  },
-  viewToggle: {
-    flexDirection: 'row',
-    gap: 4,
-  },
+  title: { fontSize: 24, fontWeight: '700', color: tc.foreground },
+  viewToggleRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
+  viewToggle: { flexDirection: 'row', gap: 4 },
   toggleButton: {
-    width: 28,
-    height: 28,
-    borderRadius: borderRadius.sm,
-    backgroundColor: tc.card,
-    borderWidth: 1,
-    borderColor: tc.border,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 28, height: 28, borderRadius: borderRadius.sm,
+    backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border,
+    justifyContent: 'center', alignItems: 'center',
   },
-  toggleButtonActive: {
-    backgroundColor: tc.primary,
-    borderColor: tc.primary,
-  },
-  gridItem: {
-    flex: 1,
-    maxWidth: '50%',
-  },
-  listContent: {
-    paddingBottom: 100,
-    flexGrow: 1,
-  },
+  toggleButtonActive: { backgroundColor: tc.primary, borderColor: tc.primary },
+  gridItem: { flex: 1, maxWidth: '50%' },
+  listContent: { paddingBottom: 100, flexGrow: 1 },
   centered: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.xl * 3,
+    flex: 1, justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: spacing.xl, paddingVertical: spacing.xl * 3,
   },
-  loadingText: {
-    color: tc.mutedForeground,
-    fontSize: 14,
-    marginTop: spacing.md,
-  },
-  errorText: {
-    color: tc.destructive,
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: spacing.md,
-  },
+  loadingText: { color: tc.mutedForeground, fontSize: 14, marginTop: spacing.md },
+  errorText: { color: tc.destructive, fontSize: 14, textAlign: 'center', marginBottom: spacing.md },
   retryButton: {
-    backgroundColor: tc.card,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: tc.border,
+    backgroundColor: tc.card, paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.sm, borderRadius: borderRadius.md,
+    borderWidth: 1, borderColor: tc.border,
   },
-  retryText: {
-    color: tc.foreground,
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  retryText: { color: tc.foreground, fontSize: 14, fontWeight: '500' },
   emptyIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: tc.card,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: spacing.md,
+    width: 64, height: 64, borderRadius: 32, backgroundColor: tc.card,
+    justifyContent: 'center', alignItems: 'center', marginBottom: spacing.md,
   },
-  emptyTitle: {
-    color: tc.foreground,
-    fontSize: 18,
-    fontWeight: '600',
-    marginBottom: spacing.xs,
-  },
-  emptySubtitle: {
-    color: tc.mutedForeground,
-    fontSize: 14,
-    textAlign: 'center',
-  },
+  emptyTitle: { color: tc.foreground, fontSize: 18, fontWeight: '600', marginBottom: spacing.xs },
+  emptySubtitle: { color: tc.mutedForeground, fontSize: 14, textAlign: 'center' },
   clearFiltersButton: {
-    marginTop: spacing.md,
-    backgroundColor: tc.card,
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: tc.border,
+    marginTop: spacing.md, backgroundColor: tc.card,
+    paddingHorizontal: spacing.lg, paddingVertical: spacing.sm,
+    borderRadius: borderRadius.md, borderWidth: 1, borderColor: tc.border,
   },
-  clearFiltersText: {
-    color: tc.foreground,
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  loadMoreContainer: {
-    paddingVertical: spacing.lg,
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  loadMoreText: {
-    color: tc.mutedForeground,
-    fontSize: 13,
-  },
+  clearFiltersText: { color: tc.foreground, fontSize: 14, fontWeight: '500' },
+  loadMoreContainer: { paddingVertical: spacing.lg, alignItems: 'center' },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(21, 24, 35, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
+    justifyContent: 'center', alignItems: 'center', zIndex: 100,
   },
-  loadingOverlayText: {
-    color: tc.mutedForeground,
-    fontSize: 14,
-    marginTop: spacing.md,
-  },
+  loadingOverlayText: { color: tc.mutedForeground, fontSize: 14, marginTop: spacing.md },
 }); };

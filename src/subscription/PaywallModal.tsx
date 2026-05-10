@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Modal,
   ScrollView,
   StyleSheet,
@@ -220,6 +221,16 @@ export function PaywallModal({ visible, onDismiss, reason }: PaywallModalProps) 
             end of the current period. Your account will be charged for renewal within 24
             hours prior to the end of the current period.
           </Text>
+
+          <View style={s.legalLinks}>
+            <TouchableOpacity onPress={() => Linking.openURL('https://tactiq-delta.vercel.app/privacy')}>
+              <Text style={[s.legalLink, { color: colors.mutedForeground }]}>Privacy Policy</Text>
+            </TouchableOpacity>
+            <Text style={[s.legalSeparator, { color: colors.mutedForeground }]}>·</Text>
+            <TouchableOpacity onPress={() => Linking.openURL('https://tactiq-delta.vercel.app/terms')}>
+              <Text style={[s.legalLink, { color: colors.mutedForeground }]}>Terms of Use</Text>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       </View>
     </Modal>
@@ -281,4 +292,10 @@ const s = StyleSheet.create({
   restoreButton: { alignItems: 'center', paddingVertical: spacing.sm, marginBottom: spacing.md },
   restoreText: { fontSize: 13, fontWeight: '500' },
   legalText: { fontSize: 10, textAlign: 'center', lineHeight: 14 },
+  legalLinks: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 8, marginTop: 10,
+  },
+  legalLink: { fontSize: 11, textDecorationLine: 'underline' },
+  legalSeparator: { fontSize: 11 },
 });

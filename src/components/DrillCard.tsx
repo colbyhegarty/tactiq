@@ -1,9 +1,9 @@
 import { Image } from 'expo-image';
 import { Bookmark, BookmarkCheck, Clock, Eye, Search, Target, Users } from 'lucide-react-native';
-import React, { useState } from 'react';
+import React, { memo, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions,
+  Pressable,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -16,7 +16,6 @@ import { borderRadius, spacing } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { Drill } from '../types/drill';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_MARGIN = spacing.md;
 
 interface DrillCardProps {
@@ -26,11 +25,16 @@ interface DrillCardProps {
   isSaved?: boolean;
   compact?: boolean;
   onQuickView?: (drill: Drill) => void;
-  /** When true, diagram is obscured with a lock overlay and interactions are gated */
   isLocked?: boolean;
 }
 
-export function DrillCard({
+const styleCache = new Map<any, ReturnType<typeof create_styles>>();
+function getStyles(tc: any) {
+  if (!styleCache.has(tc)) styleCache.set(tc, create_styles(tc));
+  return styleCache.get(tc)!;
+}
+
+function DrillCardInner({
   drill,
   onPress,
   onSave,
@@ -40,60 +44,73 @@ export function DrillCard({
   isLocked = false,
 }: DrillCardProps) {
   const { colors: tc } = useTheme();
-  const styles = create_styles(tc);
+  const styles = getStyles(tc);
   const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [isPressed, setIsPressed] = useState(false);
 
-  const categoryColor = getCategoryColor(drill.category);
-  const difficultyColor = getDifficultyColor(drill.difficulty);
   const scale = useSharedValue(1);
-  const titleColorActive = useSharedValue(0);
 
   const cardAnimStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const titleAnimStyle = useAnimatedStyle(() => ({
-    color: titleColorActive.value > 0.5 ? tc.primary : tc.foreground,
-  }));
+  const imageUri = useMemo(
+    () => (drill.svg_url ? `${drill.svg_url}?v=17` : null),
+    [drill.svg_url],
+  );
 
-  const [showOverlay, setShowOverlay] = useState(false);
+  const categoryColor = useMemo(() => getCategoryColor(drill.category), [drill.category]);
+  const difficultyColor = useMemo(() => getDifficultyColor(drill.difficulty), [drill.difficulty]);
+
+  const categoryTags = useMemo(() => {
+    if (!drill.category) return null;
+    return drill.category.split(',').map((cat, index) => {
+      const catColor = getCategoryColor(cat.trim());
+      return (
+        <View key={index} style={[styles.tag, { backgroundColor: catColor.bg }]}>
+          <Text style={[styles.tagText, { color: catColor.text }]}>
+            {cat.trim().toUpperCase()}
+          </Text>
+        </View>
+      );
+    });
+  }, [drill.category, styles]);
 
   return (
     <Animated.View
       style={[styles.card, compact && styles.cardCompact, cardAnimStyle]}
       onTouchStart={() => {
         scale.value = withTiming(1.03, { duration: 150 });
-        titleColorActive.value = withTiming(1, { duration: 150 });
+        setIsPressed(true);
       }}
       onTouchEnd={() => {
         scale.value = withTiming(1, { duration: 200 });
-        titleColorActive.value = withTiming(0, { duration: 200 });
+        setIsPressed(false);
       }}
       onTouchCancel={() => {
         scale.value = withTiming(1, { duration: 200 });
-        titleColorActive.value = withTiming(0, { duration: 200 });
+        setIsPressed(false);
       }}
     >
       {/* Diagram Image */}
       <View style={styles.imageContainer}>
-        <TouchableOpacity
+        <Pressable
           style={styles.imageContainer}
           onPress={() => {
             if (isLocked) {
-              // For locked drills, tapping anywhere triggers onPress (which shows paywall)
               onPress(drill);
             } else {
-              setShowOverlay(!showOverlay);
+              setShowOverlay((v) => !v);
             }
           }}
-          activeOpacity={0.95}
         >
-          {drill.svg_url && !imageError ? (
+          {imageUri && !imageError ? (
             <>
               <Image
-                source={{ uri: drill.svg_url + '?v=17' }}
-                style={[styles.image, isLocked && { opacity: 0.15 }]}
+                source={{ uri: imageUri }}
+                style={[styles.image, isLocked && styles.imageLocked]}
                 contentFit="cover"
                 transition={200}
                 onLoadStart={() => setImageLoading(true)}
@@ -112,14 +129,13 @@ export function DrillCard({
             </View>
           )}
 
-          {/* Lock overlay for locked drills */}
           {isLocked && <LockedDrillOverlay />}
 
-          {/* Bookmark Button — hidden for locked drills */}
           {!isLocked && (
             <TouchableOpacity
               style={[styles.bookmarkButton, isSaved && styles.bookmarkButtonSaved]}
               onPress={(e) => { e.stopPropagation?.(); onSave?.(drill); }}
+              hitSlop={8}
             >
               {isSaved ? (
                 <BookmarkCheck size={compact ? 14 : 16} color={tc.primaryForeground} fill={tc.primaryForeground} />
@@ -129,11 +145,13 @@ export function DrillCard({
             </TouchableOpacity>
           )}
 
-          {/* Tap overlay with Quick View + View Drill — hidden for locked drills */}
           {showOverlay && !isLocked && (
             <View style={styles.overlay}>
               {onQuickView && (
-                <TouchableOpacity style={[styles.overlayBtnWhite, compact && styles.overlayBtnCompact]} onPress={() => { setShowOverlay(false); onQuickView(drill); }}>
+                <TouchableOpacity
+                  style={[styles.overlayBtnWhite, compact && styles.overlayBtnCompact]}
+                  onPress={() => { setShowOverlay(false); onQuickView(drill); }}
+                >
                   {compact ? (
                     <Search size={18} color={tc.primary} />
                   ) : (
@@ -141,7 +159,10 @@ export function DrillCard({
                   )}
                 </TouchableOpacity>
               )}
-              <TouchableOpacity style={[styles.overlayBtnGreen, compact && styles.overlayBtnCompact]} onPress={() => { setShowOverlay(false); onPress(drill); }}>
+              <TouchableOpacity
+                style={[styles.overlayBtnGreen, compact && styles.overlayBtnCompact]}
+                onPress={() => { setShowOverlay(false); onPress(drill); }}
+              >
                 {compact ? (
                   <Eye size={18} color="#fff" />
                 ) : (
@@ -150,30 +171,25 @@ export function DrillCard({
               </TouchableOpacity>
             </View>
           )}
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
       {/* Content */}
-      <TouchableOpacity style={[styles.content, compact && styles.contentCompact]} onPress={() => onPress(drill)} activeOpacity={0.7}>
-        {/* Top section: title, tags, description */}
+      <TouchableOpacity
+        style={[styles.content, compact && styles.contentCompact]}
+        onPress={() => onPress(drill)}
+        activeOpacity={0.7}
+      >
         <View>
-          {/* Title */}
-          <Animated.Text style={[styles.title, compact && styles.titleCompact, titleAnimStyle]} numberOfLines={compact ? 2 : 1}>
+          <Text
+            style={[styles.title, compact && styles.titleCompact, isPressed && styles.titlePressed]}
+            numberOfLines={compact ? 2 : 1}
+          >
             {drill.name}
-          </Animated.Text>
+          </Text>
 
-          {/* Tags */}
           <View style={styles.tags}>
-            {drill.category?.split(',').map((cat, index) => {
-              const catColor = getCategoryColor(cat.trim());
-              return (
-                <View key={index} style={[styles.tag, { backgroundColor: catColor.bg }]}>
-                  <Text style={[styles.tagText, { color: catColor.text }]}>
-                    {cat.trim().toUpperCase()}
-                  </Text>
-                </View>
-              );
-            })}
+            {categoryTags}
             {drill.difficulty && (
               <View style={[styles.tag, { backgroundColor: difficultyColor.bg }]}>
                 <Text style={[styles.tagText, { color: difficultyColor.text }]}>
@@ -183,7 +199,6 @@ export function DrillCard({
             )}
           </View>
 
-          {/* Description (hidden in compact) */}
           {!compact && drill.description && (
             <Text style={styles.description} numberOfLines={2}>
               {drill.description}
@@ -191,10 +206,8 @@ export function DrillCard({
           )}
         </View>
 
-        {/* Spacer pushes meta to bottom */}
-        <View style={{ flex: 1 }} />
+        <View style={styles.spacer} />
 
-        {/* Meta Info - pinned to bottom */}
         <View style={styles.meta}>
           {drill.player_count != null && (
             <View style={styles.metaItem}>
@@ -222,6 +235,8 @@ export function DrillCard({
   );
 }
 
+export const DrillCard = memo(DrillCardInner);
+
 function create_styles(tc: any) { return StyleSheet.create({
   card: {
     backgroundColor: tc.card,
@@ -242,146 +257,51 @@ function create_styles(tc: any) { return StyleSheet.create({
     backgroundColor: tc.fieldDark,
     position: 'relative',
   },
-  image: {
-    width: '100%',
-    height: '100%',
-  },
+  image: { width: '100%', height: '100%' },
+  imageLocked: { opacity: 0.15 },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(99, 176, 67, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholder: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  placeholderText: {
-    color: tc.mutedForeground,
-    fontSize: 14,
-  },
+  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  placeholderText: { color: tc.mutedForeground, fontSize: 14 },
   bookmarkButton: {
-    position: 'absolute',
-    top: spacing.sm,
-    left: spacing.sm,
-    width: 32,
-    height: 32,
-    borderRadius: borderRadius.full,
+    position: 'absolute', top: spacing.sm, left: spacing.sm,
+    width: 32, height: 32, borderRadius: borderRadius.full,
     backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: 'center', alignItems: 'center',
   },
-  bookmarkButtonSaved: {
-    backgroundColor: tc.primary,
-  },
-  animatedBadge: {
-    position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: tc.accent,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    gap: 4,
-  },
-  animatedDot: {
-    color: tc.background,
-    fontSize: 8,
-  },
-  animatedText: {
-    color: tc.background,
-    fontSize: 11,
-    fontWeight: '500',
-  },
-  content: {
-    flex: 1,
-    padding: spacing.md,
-  },
-  contentCompact: {
-    padding: spacing.sm,
-  },
-  title: {
-    color: tc.foreground,
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: spacing.sm,
-  },
-  titleCompact: {
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  tags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: spacing.sm,
-  },
-  tag: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: borderRadius.full,
-  },
-  tagText: {
-    fontSize: 10,
-    fontWeight: '600',
-  },
-  description: {
-    color: tc.mutedForeground,
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: spacing.sm,
-  },
-  meta: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-  },
-  metaItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  metaText: {
-    color: tc.mutedForeground,
-    fontSize: 11,
-  },
+  bookmarkButtonSaved: { backgroundColor: tc.primary },
+  content: { flex: 1, padding: spacing.md },
+  contentCompact: { padding: spacing.sm },
+  title: { color: tc.foreground, fontSize: 16, fontWeight: '600', marginBottom: spacing.sm },
+  titleCompact: { fontSize: 13, marginBottom: 4 },
+  titlePressed: { color: tc.primary },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.sm },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: borderRadius.full },
+  tagText: { fontSize: 10, fontWeight: '600' },
+  description: { color: tc.mutedForeground, fontSize: 13, lineHeight: 18, marginBottom: spacing.sm },
+  spacer: { flex: 1 },
+  meta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText: { color: tc.mutedForeground, fontSize: 11 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 8,
-    zIndex: 20,
+    justifyContent: 'center', alignItems: 'center',
+    flexDirection: 'row', gap: 8, zIndex: 20,
   },
   overlayBtnWhite: {
     backgroundColor: 'rgba(255,255,255,0.95)',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8,
   },
-  overlayBtnWhiteText: {
-    color: tc.primary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  overlayBtnWhiteText: { color: tc.primary, fontSize: 13, fontWeight: '600' },
   overlayBtnGreen: {
     backgroundColor: tc.primary,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 8,
   },
-  overlayBtnCompact: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 22,
-  },
-  overlayBtnGreenText: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '600',
-  },
+  overlayBtnCompact: { paddingHorizontal: 12, paddingVertical: 12, borderRadius: 22 },
+  overlayBtnGreenText: { color: '#fff', fontSize: 13, fontWeight: '600' },
 }); };
