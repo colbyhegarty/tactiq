@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { LayoutGrid, LayoutList, Library } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, LayoutGrid, LayoutList, Library } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -16,6 +16,7 @@ import { DrillCard } from '../../src/components/DrillCard';
 import { DrillDetailModal } from '../../src/components/DrillDetailModal';
 import { DrillFilters } from '../../src/components/DrillFilters';
 import { QuickPreviewModal } from '../../src/components/QuickPreviewModal';
+import { track, trackScreen } from '../../src/lib/analytics';
 import {
   DrillFilterParams,
   LibraryDrillMeta,
@@ -30,19 +31,17 @@ import {
   warmUpBackend,
 } from '../../src/lib/api';
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
-import { useSubscription, usePaywallGate, PaywallModal } from '../../src/subscription';
-import { trackScreen, track } from '../../src/lib/analytics';
+import { PaywallModal, usePaywallGate, useSubscription } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
 
-// Number of drills to show per page
-const PAGE_SIZE = 20;
+const PAGE_SIZE = 12;
 
 export default function LibraryScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
-  const styles = create_styles(tc);
+  const styles = useMemo(() => create_styles(tc), [tc]);
   const { isDrillUnlocked } = useSubscription();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
   const [categories, setCategories] = useState<string[]>([]);
@@ -59,10 +58,7 @@ export default function LibraryScreen() {
   const [error, setError] = useState<string | null>(null);
   const [gridCols, setGridCols] = useState<1 | 2>(1);
   const [quickPreviewDrill, setQuickPreviewDrill] = useState<Drill | null>(null);
-
-  // Pagination state
   const [page, setPage] = useState(1);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
 
   const flatListRef = useRef<FlatList>(null);
 
@@ -89,7 +85,6 @@ export default function LibraryScreen() {
   const loadDrills = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-
     try {
       const serverFilters: DrillFilterParams = {};
       if (filters.category) serverFilters.category = filters.category;
@@ -109,6 +104,15 @@ export default function LibraryScreen() {
         filteredDrills = filterByDuration(filteredDrills, filters.duration);
         filteredDrills = filterByAgeGroup(filteredDrills, filters.age_group);
 
+        // Multi-category filter — applied client-side
+        const selectedCats: string[] = (filters as any).categories;
+        if (selectedCats?.length > 0) {
+          filteredDrills = filteredDrills.filter((d) => {
+            const drillCats = (d.category || '').split(',').map((c: string) => c.trim());
+            return selectedCats.some((sc) => drillCats.includes(sc));
+          });
+        }
+
         if (!filters.search) {
           filteredDrills = [...filteredDrills].sort((a, b) => {
             const hashA = a.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
@@ -118,7 +122,7 @@ export default function LibraryScreen() {
         }
 
         setDrillsMeta(filteredDrills);
-        setPage(1); // Reset to first page on new load
+        setPage(1);
       }
     } catch (err: any) {
       setError(err.message || 'Failed to load drills');
@@ -132,10 +136,13 @@ export default function LibraryScreen() {
     loadDrills();
   }, [loadDrills]);
 
-  // Scroll to top and reset page on filter change
   useEffect(() => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [gridCols]);
+
+  useEffect(() => {
     setPage(1);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, [filters]);
 
   const handleRefresh = () => {
@@ -148,24 +155,19 @@ export default function LibraryScreen() {
     [drillsMeta],
   );
 
-  // Only show drills up to current page
-  const visibleDrills = useMemo(
-    () => allDrills.slice(0, page * PAGE_SIZE),
-    [allDrills, page],
-  );
+  const totalPages = Math.max(1, Math.ceil(allDrills.length / PAGE_SIZE));
 
-  const hasMore = visibleDrills.length < allDrills.length;
+  // Exactly PAGE_SIZE drills for the current page — FlatList always has a
+  // small, fixed dataset with no items added mid-scroll.
+  const pageDrills = useMemo(() => {
+    const start = (page - 1) * PAGE_SIZE;
+    return allDrills.slice(start, start + PAGE_SIZE);
+  }, [allDrills, page]);
 
-  // Called when user reaches the end — load next page
-  const handleLoadMore = useCallback(() => {
-    if (isLoadingMore || !hasMore || isLoading) return;
-    setIsLoadingMore(true);
-    // Small delay so scroll settles before new items render
-    setTimeout(() => {
-      setPage((prev) => prev + 1);
-      setIsLoadingMore(false);
-    }, 100);
-  }, [isLoadingMore, hasMore, isLoading]);
+  const goToPage = useCallback((nextPage: number) => {
+    setPage(nextPage);
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, []);
 
   const handleViewDrill = useCallback(async (drill: Drill) => {
     if (!isDrillUnlocked(drill.id)) {
@@ -173,7 +175,6 @@ export default function LibraryScreen() {
       await gate('view_locked_drill');
       return;
     }
-
     track('drill_viewed', { drill_id: drill.id, drill_name: drill.name, category: drill.category });
     setIsLoadingDrill(true);
     try {
@@ -237,9 +238,10 @@ export default function LibraryScreen() {
     }
   }, [savedState]);
 
-  const isDrillCurrentlySaved = useCallback((drillId: string): boolean => {
-    return savedState[drillId] ?? false;
-  }, [savedState]);
+  const isDrillCurrentlySaved = useCallback(
+    (drillId: string) => savedState[drillId] ?? false,
+    [savedState],
+  );
 
   const renderEmpty = useCallback(() => {
     if (isLoading) {
@@ -250,7 +252,6 @@ export default function LibraryScreen() {
         </View>
       );
     }
-
     if (error) {
       return (
         <View style={styles.centered}>
@@ -261,7 +262,6 @@ export default function LibraryScreen() {
         </View>
       );
     }
-
     return (
       <View style={styles.centered}>
         <View style={styles.emptyIcon}>
@@ -272,16 +272,13 @@ export default function LibraryScreen() {
           Try adjusting your filters or search criteria.
         </Text>
         {Object.keys(filters).length > 0 && (
-          <TouchableOpacity
-            style={styles.clearFiltersButton}
-            onPress={() => setFilters({})}
-          >
+          <TouchableOpacity style={styles.clearFiltersButton} onPress={() => setFilters({})}>
             <Text style={styles.clearFiltersText}>Clear Filters</Text>
           </TouchableOpacity>
         )}
       </View>
     );
-  }, [isLoading, error, filters, loadDrills]);
+  }, [isLoading, error, filters, loadDrills, styles, tc]);
 
   const renderItem = useCallback(({ item }: { item: Drill }) => (
     <View style={gridCols === 2 ? styles.gridItem : undefined}>
@@ -296,14 +293,73 @@ export default function LibraryScreen() {
       />
     </View>
   ), [gridCols, handleViewDrill, handleSaveDrill, isDrillCurrentlySaved, isDrillUnlocked, styles]);
+
   const renderFooter = useCallback(() => {
-    if (!isLoadingMore) return null;
+    if (isLoading || allDrills.length === 0) return null;
+
+    const start = (page - 1) * PAGE_SIZE + 1;
+    const end = Math.min(page * PAGE_SIZE, allDrills.length);
+
+    // Page numbers with smart ellipsis
+    const buildPageNumbers = (): (number | '...')[] => {
+      if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+      const pages: (number | '...')[] = [];
+      const left = Math.max(2, page - 1);
+      const right = Math.min(totalPages - 1, page + 1);
+      pages.push(1);
+      if (left > 2) pages.push('...');
+      for (let i = left; i <= right; i++) pages.push(i);
+      if (right < totalPages - 1) pages.push('...');
+      pages.push(totalPages);
+      return pages;
+    };
+
     return (
-      <View style={styles.loadMoreContainer}>
-        <ActivityIndicator size="small" color={tc.primary} />
+      <View style={styles.paginationContainer}>
+        <Text style={styles.paginationCount}>
+          {start}–{end} of {allDrills.length} drills
+        </Text>
+        <View style={styles.paginationRow}>
+          <TouchableOpacity
+            style={[styles.pageArrow, page === 1 && styles.pageArrowDisabled]}
+            onPress={() => page > 1 && goToPage(page - 1)}
+            disabled={page === 1}
+            hitSlop={8}
+          >
+            <ChevronLeft size={18} color={page === 1 ? tc.mutedForeground : tc.foreground} />
+          </TouchableOpacity>
+
+          <View style={styles.pageNumbers}>
+            {buildPageNumbers().map((p, i) =>
+              p === '...' ? (
+                <Text key={`ellipsis-${i}`} style={styles.pageEllipsis}>…</Text>
+              ) : (
+                <TouchableOpacity
+                  key={p}
+                  style={[styles.pageBtn, p === page && styles.pageBtnActive]}
+                  onPress={() => p !== page && goToPage(p as number)}
+                  hitSlop={4}
+                >
+                  <Text style={[styles.pageBtnText, p === page && styles.pageBtnTextActive]}>
+                    {p}
+                  </Text>
+                </TouchableOpacity>
+              )
+            )}
+          </View>
+
+          <TouchableOpacity
+            style={[styles.pageArrow, page === totalPages && styles.pageArrowDisabled]}
+            onPress={() => page < totalPages && goToPage(page + 1)}
+            disabled={page === totalPages}
+            hitSlop={8}
+          >
+            <ChevronRight size={18} color={page === totalPages ? tc.mutedForeground : tc.foreground} />
+          </TouchableOpacity>
+        </View>
       </View>
     );
-  }, [isLoadingMore, tc.primary]);
+  }, [isLoading, allDrills.length, page, totalPages, goToPage, styles, tc]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: tc.background }]} edges={['top']}>
@@ -346,23 +402,17 @@ export default function LibraryScreen() {
 
       <FlatList
         ref={flatListRef}
-        data={visibleDrills}
+        data={pageDrills}
         keyExtractor={(item) => item.id}
         numColumns={gridCols}
         key={`grid-${gridCols}`}
         ListEmptyComponent={renderEmpty}
         ListFooterComponent={renderFooter}
-        removeClippedSubviews={true}
-        initialNumToRender={10}
-        maxToRenderPerBatch={8}
-        windowSize={7}
-        updateCellsBatchingPeriod={50}
-        onEndReached={handleLoadMore}
-        onEndReachedThreshold={0.01}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
@@ -371,7 +421,6 @@ export default function LibraryScreen() {
             colors={[tc.primary]}
           />
         }
-        showsVerticalScrollIndicator={false}
       />
 
       {isLoadingDrill && (
@@ -421,10 +470,8 @@ function create_styles(tc: any) { return StyleSheet.create({
     borderBottomColor: tc.border,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-    marginBottom: spacing.md,
+    flexDirection: 'row', alignItems: 'center',
+    gap: spacing.sm, marginBottom: spacing.md,
   },
   logoContainer: {
     width: 40, height: 40, borderRadius: borderRadius.md,
@@ -440,7 +487,7 @@ function create_styles(tc: any) { return StyleSheet.create({
   },
   toggleButtonActive: { backgroundColor: tc.primary, borderColor: tc.primary },
   gridItem: { flex: 1, maxWidth: '50%' },
-  listContent: { paddingBottom: 100, flexGrow: 1 },
+  listContent: { paddingBottom: 24, flexGrow: 1 },
   centered: {
     flex: 1, justifyContent: 'center', alignItems: 'center',
     paddingHorizontal: spacing.xl, paddingVertical: spacing.xl * 3,
@@ -465,7 +512,31 @@ function create_styles(tc: any) { return StyleSheet.create({
     borderRadius: borderRadius.md, borderWidth: 1, borderColor: tc.border,
   },
   clearFiltersText: { color: tc.foreground, fontSize: 14, fontWeight: '500' },
-  loadMoreContainer: { paddingVertical: spacing.lg, alignItems: 'center' },
+  // Pagination
+  paginationContainer: {
+    paddingHorizontal: spacing.md, paddingTop: spacing.lg,
+    paddingBottom: spacing.xl + 16, alignItems: 'center', gap: spacing.md,
+  },
+  paginationCount: { fontSize: 12, color: tc.mutedForeground, fontWeight: '500' },
+  paginationRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  pageArrow: {
+    width: 36, height: 36, borderRadius: borderRadius.md,
+    backgroundColor: tc.card, borderWidth: 1, borderColor: tc.border,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  pageArrowDisabled: { opacity: 0.35 },
+  pageNumbers: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  pageBtn: {
+    minWidth: 36, height: 36, borderRadius: borderRadius.md,
+    paddingHorizontal: spacing.sm, backgroundColor: tc.card,
+    borderWidth: 1, borderColor: tc.border,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  pageBtnActive: { backgroundColor: tc.primary, borderColor: tc.primary },
+  pageBtnText: { fontSize: 14, fontWeight: '500', color: tc.foreground },
+  pageBtnTextActive: { color: tc.primaryForeground, fontWeight: '700' },
+  pageEllipsis: { fontSize: 14, color: tc.mutedForeground, paddingHorizontal: 4, lineHeight: 36 },
+  // Overlays
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(21, 24, 35, 0.85)',

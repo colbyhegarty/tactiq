@@ -1,13 +1,13 @@
 import { Image } from 'expo-image';
 import { Bookmark, BookmarkCheck, Clock, Eye, Search, Target, Users } from 'lucide-react-native';
-import React, { memo, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
   Pressable,
+  Animated as RNAnimated,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
@@ -28,10 +28,33 @@ interface DrillCardProps {
   isLocked?: boolean;
 }
 
-const styleCache = new Map<any, ReturnType<typeof create_styles>>();
+// Style cache keyed by stable color string so StyleSheet.create() only runs
+// once per theme, not on every render.
+const styleCache = new Map<string, ReturnType<typeof create_styles>>();
 function getStyles(tc: any) {
-  if (!styleCache.has(tc)) styleCache.set(tc, create_styles(tc));
-  return styleCache.get(tc)!;
+  const key = `${tc.primary}_${tc.background}_${tc.card}_${tc.fieldDark}`;
+  if (!styleCache.has(key)) styleCache.set(key, create_styles(tc));
+  return styleCache.get(key)!;
+}
+
+// Shimmer component — purely animation-driven, zero state changes.
+// It sits permanently underneath the image and the image fades in on top
+// once decoded. No setState ever fires during scroll.
+function Shimmer({ style }: { style: any }) {
+  const opacity = useRef(new RNAnimated.Value(0.4)).current;
+
+  useEffect(() => {
+    const anim = RNAnimated.loop(
+      RNAnimated.sequence([
+        RNAnimated.timing(opacity, { toValue: 1, duration: 800, useNativeDriver: true }),
+        RNAnimated.timing(opacity, { toValue: 0.4, duration: 800, useNativeDriver: true }),
+      ])
+    );
+    anim.start();
+    return () => anim.stop();
+  }, []);
+
+  return <RNAnimated.View style={[style, { opacity }]} />;
 }
 
 function DrillCardInner({
@@ -45,7 +68,6 @@ function DrillCardInner({
 }: DrillCardProps) {
   const { colors: tc } = useTheme();
   const styles = getStyles(tc);
-  const [imageLoading, setImageLoading] = useState(true);
   const [imageError, setImageError] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const [isPressed, setIsPressed] = useState(false);
@@ -57,7 +79,7 @@ function DrillCardInner({
   }));
 
   const imageUri = useMemo(
-    () => (drill.svg_url ? `${drill.svg_url}?v=17` : null),
+    () => (drill.svg_url ? `${drill.svg_url}?v=19` : null),
     [drill.svg_url],
   );
 
@@ -106,28 +128,25 @@ function DrillCardInner({
             }
           }}
         >
+          {/* Shimmer sits permanently underneath. No state, no re-renders.
+              The image renders on top with a short fade once decoded.
+              expo-image's decode work is off the main thread so it never
+              blocks scroll — the shimmer just pulses until it's ready. */}
+          <Shimmer style={styles.shimmer} />
+
           {imageUri && !imageError ? (
-            <>
-              <Image
-                source={{ uri: imageUri }}
-                style={[styles.image, isLocked && styles.imageLocked]}
-                contentFit="cover"
-                transition={200}
-                onLoadStart={() => setImageLoading(true)}
-                onLoadEnd={() => setImageLoading(false)}
-                onError={() => { setImageError(true); setImageLoading(false); }}
-              />
-              {imageLoading && (
-                <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="small" color={tc.primary} />
-                </View>
-              )}
-            </>
-          ) : (
+            <Image
+              source={{ uri: imageUri }}
+              style={[styles.image, isLocked && styles.imageLocked]}
+              contentFit="cover"
+              transition={300}
+              onError={() => setImageError(true)}
+            />
+          ) : imageError ? (
             <View style={styles.placeholder}>
               <Text style={styles.placeholderText}>No diagram</Text>
             </View>
-          )}
+          ) : null}
 
           {isLocked && <LockedDrillOverlay />}
 
@@ -257,15 +276,21 @@ function create_styles(tc: any) { return StyleSheet.create({
     backgroundColor: tc.fieldDark,
     position: 'relative',
   },
-  image: { width: '100%', height: '100%' },
-  imageLocked: { opacity: 0.15 },
-  loadingOverlay: {
+  shimmer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(99, 176, 67, 0.3)',
+    backgroundColor: tc.fieldDark,
+  },
+  image: {
+    ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
+  },
+  imageLocked: { opacity: 0.15 },
+  placeholder: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  placeholder: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   placeholderText: { color: tc.mutedForeground, fontSize: 14 },
   bookmarkButton: {
     position: 'absolute', top: spacing.sm, left: spacing.sm,

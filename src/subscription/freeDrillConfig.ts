@@ -25,92 +25,44 @@
  * add them here to make them available to free users.
  */
 export const FREE_DRILL_IDS: Set<string> = new Set([
-  // ── 1V1 ──
-  '1v1-dribble-attack-with-shot', // 1v1 Attacking Dribble to Goal
-  '1v1-competition', // 1v1 Competitive Challenge
-  '1v1-diamond-shooting-drill', // 1v1 Diamond Finishing Exercise
-
-  // ── 2V2 ──
-  '2v2-with-target-players-to-small-goals', // 2v2 Attack with Targets
-  '2v2-dribbling-to-beat-the-defender', // 2v2 Attacking Dribble Challenge
-  '2v2-challenge', // 2v2 Competition
-
-  // ── ATTACKING ──
-  '2v1-dribbling-with-opposition', // 2v1 Attacking Dribble Against Defender
-  '3v1-attacking-the-goal', // 3v1 to Goal
-  '2v1-receiving-while-facing-the-defender', // 2v1 Receiving Facing the Defender
-
-  // ── CROSSING ──
-  'crossing-finishing-shooting-drill', // Cross Delivery and Goal Scoring Exercise
-  'cross-finish-under-pressure', // Cross and Finish with Defensive Pressure
-  'combination-crossing-drill', // Crossing Combination Exercise
-
-  // ── DEFENDING ──
-  'teaching-1st-defender-without-opposition', // 1st Defender Fundamentals
-  '2v1-defensive-recovery-race', // 2v1 Defensive Recovery Race
-  'defensive-clearances-up-and-out', // Defensive Clearances- High and Wide
-
-  // ── DRIBBLING ──
-  'dribbling-at-the-cone', // Cone Dribbling Challenge
-  'simple-obstacle-course', // Basic Agility Circuit
-  'body-parts-warm-up-game', // Body Parts Activation Exercise
-
-  // ── FINISHING ──
-  'pass-receiving', // Pass Receiving
-  'forward-warmup', // Forward Warmup
-  'give-and-go-shooting-warmup', // Give and Go Shooting Warmup
-
-  // ── FITNESS ──
-  '5050-lap-runs', // 50/50 Lap Runs
-  'back-to-front-laps', // Back-to-Front Laps
-  'fartlek-run-drills', // Fartlek Run Drills
-
-  // ── GAME ──
-  '11v7-full-team-positional-possession', // 11v7 Full-Team Positional Possession
-  '2v2-to-full-size-goals', // 2v2 to Full-Size Goals
-  '11v5-positional-rondo', // 11v5 Positional Possession
-
-  // ── GOALKEEPER ──
-  '3-cone-drill', // 3 Cone Drill
-  'bounce-reaction-drill', // Bounce Reaction Drill
-  'distribution', // Distribution
-
-  // ── PASSING ──
-  'soccer-ball-smash', // Ball Strike Challenge
-  'circle-passing-combination-drill', // Circular Passing Combination Exercise
-  'check-in-passing-warm-up', // Check-To Passing Warm-Up
-
-  // ── POSSESSION ──
-  '2v1-attacking-rondo', // 2v1 Supporting Rondo
-  '2v1-and-1v1-possession-game', // 2v1 to 1v1 Possession Exercise
-  '3v1-rondo', // 3v1 Possession
-
-  // ── REACTION ──
-  'headcatch-game', // Header/Catch Challenge
-
-  // ── RECEIVING ──
-  'trapping-with-passive-opposition', // Ball Control Under Light Pressure
-  'trapping-and-control-with-no-opposition', // Ball Control and Receiving Without Pressure
-  'check-away-and-receive-under-pressure', // Check Away and Receive Under Pressure
-
-  // ── SHOOTING ──
-  'diagonal-soccer-shooting-drill', // 1-2 Finishing Exercise
-  'shooting-agility-drill', // Agility Shooting Exercise
-  'combination-shooting-finishing-drill', // Combination Shooting and Finishing Exercise
-
-  // ── SMALL-SIDED ──
-  '2v1-with-keepers', // 2v1 with Goalkeepers
-  '3v3-4-goal-small-sided-game-funino', // 3v3 Small-Sided to Four Goals
-  '4v4-soccer-to-a-small-gate', // 4v4 Attack to Gates
-
-  // ── TRANSITION ──
-  '1v1-to-4v1', // 1v1 to 4v1
-
-  // ── TURNING ──
-  'back-to-goal-receiving-and-turn', // Back-to-Goal Receiving and Turn
-
-  // ── WARM-UP ──
-  'across-field-warm-up', // Cross-Field Warm-Up Exercise
+"1v1-battle-attacking-and-reaction-drill",  //# 1v1 Attack and Reaction Exercise
+"1v1-attacking-to-a-full-size-goal",  //# 1v1 Attacking Towards Goal
+"2v2-with-target-players-to-small-goals",  //# 2v2 Attack with Targets
+"2v2-dribbling-to-beat-the-defender",  //# 2v2 Attacking Dribble Challenge
+"attacking-from-the-midfield",  //# Midfield Attack Development
+"4v2-soccer-game-to-goal",  //# 4v2 Attacking to Goal
+"far-post-near-post-2",  //# Far Post, Near Post #2
+"defensive-shape-and-press-drill",  //# Defensive Shape and Press Drill
+"teaching-1st-defender-without-opposition",  //# 1st Defender Fundamentals
+"traffic-jam-dribbling-game",  //# Congested Dribbling Challenge
+"figure-eight-dribbling-drill",  //# Figure Eight Ball Control Exercise
+"power-and-finesse-with-a-twist",  //# Power and Finesse
+"double-pass-shooting",  //# Double Pass Shooting
+"3v3-shooting-from-half",  //# 3v3 Shooting from Half
+"t-cone-sprint-and-agility-drill",  //# T-Cone Sprint and Agility Drill
+"tic-tac-toe-sprints",  //# Tic-Tac-Toe Sprints
+"11v7-full-team-positional-possession",  //# 11v7 Full-Team Positional Possession
+"half-field-ssg-with-outside-servers",  //# Half-Field SSG with Outside Servers
+"soccer-tennis",  //# Soccer Tennis
+"goalie-wars",  //# Goalie Wars
+"screen-the-keeper",  //# Screen The Keeper
+"deflect-and-dive",  //# Deflect and Dive
+"combination-play-improving-1-2-combinations",  //# Give-and-Go Combination Play
+"passing-warm-up-drill",  //# Passing Preparation Exercise
+"4v42-endzone-possession-game",  //# 4v4 Plus 2 End Zone Possession Drill
+"3v1-early-support",  //# 3v1 Quick Support Drill
+"6v1-overload-add-defenders-drill",  //# 6v1 Keep Away Add Defenders
+"1v1-attacking-and-reaction-drill",  //# 1v1 Reaction Exercise
+"receiving-the-ball-with-back-to-goal",  //# Receiving with Back to Goal
+"1v1-lose-your-man",  //# 1v1, Lose Your Man
+"box-shooting-rotation-with-wide-cross",  //# Box Shooting Rotation with Wide Cross
+"lane-spacing-and-separation-soccer-game",  //# Lane Spacing Small-Sided Game
+"4v4-keeper-to-full-size-goals",  //# 4v4 Plus Goalkeeper to Goals
+"4v4-zone-game",  //# 4v4 Zonal Rondo
+"3v2-flying-changes",  //# 3v2 Dynamic Transition Drill
+"back-to-goal-receiving-and-turn",  //# Back-to-Goal Receiving and Turn
+"inside-of-the-foot-passing-warm-up",  //# Inside of the Foot Passing
+"across-field-warm-up"  //# Cross-Field Warm-Up Exercise
 ]);
 
 /**

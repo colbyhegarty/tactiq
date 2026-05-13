@@ -2,6 +2,7 @@ import {
     ChevronDown,
     ChevronUp,
     Filter,
+    Layers,
     Search,
     X,
 } from 'lucide-react-native';
@@ -21,7 +22,6 @@ import { AGE_GROUP_CATEGORIES, DIFFICULTIES, DrillFilterParams } from '../lib/ap
 import { borderRadius, spacing } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 
-// Enable LayoutAnimation on Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -53,16 +53,13 @@ export function DrillFilters({
   const styles = create_styles(tc);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const [multiCategoryMode, setMultiCategoryMode] = useState(false);
 
-  // Local search text for debouncing — keeps TextInput responsive
   const [searchText, setSearchText] = useState(filters.search || '');
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Sync local search text when filters.search is cleared externally (e.g. "Clear All")
   useEffect(() => {
-    if (!filters.search && searchText) {
-      setSearchText('');
-    }
+    if (!filters.search && searchText) setSearchText('');
   }, [filters.search]);
 
   const handleSearchChange = (text: string) => {
@@ -70,11 +67,7 @@ export function DrillFilters({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
       const newFilters = { ...filters };
-      if (text) {
-        newFilters.search = text;
-      } else {
-        delete newFilters.search;
-      }
+      if (text) { newFilters.search = text; } else { delete newFilters.search; }
       onFilterChange(newFilters);
     }, 400);
   };
@@ -100,11 +93,31 @@ export function DrillFilters({
     onFilterChange(newFilters);
   };
 
+  // Multi-select: toggle a category in/out of the selected set
+  const toggleMultiCategory = (cat: string) => {
+    const current: string[] = (filters as any).categories || [];
+    const next = current.includes(cat)
+      ? current.filter((c) => c !== cat)
+      : [...current, cat];
+    const newFilters = { ...filters } as any;
+    if (next.length === 0) {
+      delete newFilters.categories;
+    } else {
+      newFilters.categories = next;
+    }
+    onFilterChange(newFilters);
+  };
+
+  const selectedCategories: string[] = (filters as any).categories || [];
+
   const clearFilters = () => {
     onFilterChange({});
   };
 
-  const activeFilterCount = Object.keys(filters).filter((k) => k !== 'search').length;
+  const activeFilterCount = Object.keys(filters).filter(
+    (k) => k !== 'search' && k !== 'categories',
+  ).length + (selectedCategories.length > 0 ? 1 : 0);
+
   const hasActiveFilters = Object.keys(filters).length > 0;
 
   const toggleFilters = () => {
@@ -116,6 +129,22 @@ export function DrillFilters({
   const toggleDropdown = (name: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setActiveDropdown(activeDropdown === name ? null : name);
+  };
+
+  // Switch between modes — clear category state from the other mode
+  const handleToggleMultiMode = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const newFilters = { ...filters } as any;
+    if (!multiCategoryMode) {
+      // switching to multi — clear single-select category
+      delete newFilters.category;
+    } else {
+      // switching to single — clear multi-select categories
+      delete newFilters.categories;
+    }
+    onFilterChange(newFilters);
+    setMultiCategoryMode((v) => !v);
+    setActiveDropdown(null);
   };
 
   const renderDropdown = (
@@ -136,10 +165,7 @@ export function DrillFilters({
           activeOpacity={0.7}
         >
           <Text
-            style={[
-              styles.dropdownText,
-              value && value !== 'All' && styles.dropdownTextActive,
-            ]}
+            style={[styles.dropdownText, value && value !== 'All' && styles.dropdownTextActive]}
             numberOfLines={1}
           >
             {displayValue}
@@ -152,33 +178,72 @@ export function DrillFilters({
         </TouchableOpacity>
         {isOpen && (
           <View style={styles.dropdownMenu}>
-            <ScrollView
-              style={styles.dropdownScroll}
-              nestedScrollEnabled
-              showsVerticalScrollIndicator={false}
-            >
+            <ScrollView style={styles.dropdownScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
               {options.map((opt) => (
                 <TouchableOpacity
                   key={opt.value}
-                  style={[
-                    styles.dropdownOption,
-                    value === opt.value && styles.dropdownOptionActive,
-                  ]}
-                  onPress={() => {
-                    onSelect(opt.value);
-                    setActiveDropdown(null);
-                  }}
+                  style={[styles.dropdownOption, value === opt.value && styles.dropdownOptionActive]}
+                  onPress={() => { onSelect(opt.value); setActiveDropdown(null); }}
                 >
-                  <Text
-                    style={[
-                      styles.dropdownOptionText,
-                      value === opt.value && styles.dropdownOptionTextActive,
-                    ]}
-                  >
+                  <Text style={[styles.dropdownOptionText, value === opt.value && styles.dropdownOptionTextActive]}>
                     {opt.label}
                   </Text>
                 </TouchableOpacity>
               ))}
+            </ScrollView>
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  // Multi-select category dropdown — stays open, shows checkboxes
+  const renderMultiCategoryDropdown = () => {
+    const isOpen = activeDropdown === 'categories';
+    const count = selectedCategories.length;
+    const label = count === 0 ? 'All Categories' : count === 1 ? selectedCategories[0] : `${count} categories`;
+
+    return (
+      <View style={[styles.dropdownWrapper, { flex: 1 }]}>
+        <TouchableOpacity
+          style={[styles.dropdown, (isOpen || count > 0) && styles.dropdownOpen]}
+          onPress={() => toggleDropdown('categories')}
+          activeOpacity={0.7}
+        >
+          <Text
+            style={[styles.dropdownText, count > 0 && styles.dropdownTextActive]}
+            numberOfLines={1}
+          >
+            {label}
+          </Text>
+          <ChevronDown
+            size={14}
+            color={tc.mutedForeground}
+            style={isOpen ? { transform: [{ rotate: '180deg' }] } : undefined}
+          />
+        </TouchableOpacity>
+        {isOpen && (
+          <View style={styles.dropdownMenu}>
+            <ScrollView style={styles.dropdownScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+              {categories.map((cat) => {
+                const selected = selectedCategories.includes(cat);
+                return (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.dropdownOption, selected && styles.dropdownOptionActive]}
+                    onPress={() => toggleMultiCategory(cat)}
+                  >
+                    <View style={styles.checkRow}>
+                      <View style={[styles.checkbox, selected && styles.checkboxSelected]}>
+                        {selected && <Text style={styles.checkmark}>✓</Text>}
+                      </View>
+                      <Text style={[styles.dropdownOptionText, selected && styles.dropdownOptionTextActive]}>
+                        {cat}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </ScrollView>
           </View>
         )}
@@ -218,28 +283,41 @@ export function DrillFilters({
             Filters{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
           </Text>
         </View>
-        {filtersOpen ? (
-          <ChevronUp size={14} color={tc.primary} />
-        ) : (
-          <ChevronDown size={14} color={tc.primary} />
-        )}
+        {filtersOpen ? <ChevronUp size={14} color={tc.primary} /> : <ChevronDown size={14} color={tc.primary} />}
       </TouchableOpacity>
 
       {/* Expanded Filter Controls */}
       {filtersOpen && (
         <View style={styles.filterControls}>
+
+          {/* Multi-category toggle */}
+          <TouchableOpacity style={styles.multiToggleRow} onPress={handleToggleMultiMode} activeOpacity={0.7}>
+            <View style={styles.multiToggleLeft}>
+              <Layers size={13} color={multiCategoryMode ? tc.primary : tc.mutedForeground} />
+              <Text style={[styles.multiToggleText, multiCategoryMode && styles.multiToggleTextActive]}>
+                Multi-category
+              </Text>
+            </View>
+            {/* pill toggle */}
+            <View style={[styles.togglePill, multiCategoryMode && styles.togglePillActive]}>
+              <View style={[styles.toggleThumb, multiCategoryMode && styles.toggleThumbActive]} />
+            </View>
+          </TouchableOpacity>
+
           {/* Row 1: Category, Age */}
           <View style={styles.filterRow}>
-            {renderDropdown(
-              'All Categories',
-              'category',
-              filters.category,
-              [
-                { label: 'All Categories', value: 'All' },
-                ...categories.map((c) => ({ label: c, value: c })),
-              ],
-              (val) => updateFilter('category', val),
-            )}
+            {multiCategoryMode
+              ? renderMultiCategoryDropdown()
+              : renderDropdown(
+                  'All Categories',
+                  'category',
+                  filters.category,
+                  [
+                    { label: 'All Categories', value: 'All' },
+                    ...categories.map((c) => ({ label: c, value: c })),
+                  ],
+                  (val) => updateFilter('category', val),
+                )}
             {renderDropdown(
               'All Ages',
               'age_group',
@@ -262,8 +340,7 @@ export function DrillFilters({
                 { label: 'Any Duration', value: 'Any Duration' },
                 ...durations.map((d) => ({ label: d, value: d })),
               ],
-              (val) =>
-                updateFilter('duration', val !== 'Any Duration' ? val : undefined),
+              (val) => updateFilter('duration', val !== 'Any Duration' ? val : undefined),
             )}
             {renderDropdown(
               'Any Difficulty',
@@ -271,10 +348,7 @@ export function DrillFilters({
               filters.difficulty,
               [
                 { label: 'Any Difficulty', value: 'All' },
-                ...DIFFICULTIES.map((d) => ({
-                  label: formatDifficulty(d),
-                  value: d,
-                })),
+                ...DIFFICULTIES.map((d) => ({ label: formatDifficulty(d), value: d })),
               ],
               (val) => updateFilter('difficulty', val),
             )}
@@ -288,9 +362,7 @@ export function DrillFilters({
               placeholderTextColor={tc.mutedForeground}
               keyboardType="number-pad"
               value={filters.min_players?.toString() || ''}
-              onChangeText={(text) =>
-                updateFilter('min_players', text ? parseInt(text) : undefined)
-              }
+              onChangeText={(text) => updateFilter('min_players', text ? parseInt(text) : undefined)}
             />
             <Text style={styles.playerCountDash}>–</Text>
             <TextInput
@@ -299,9 +371,7 @@ export function DrillFilters({
               placeholderTextColor={tc.mutedForeground}
               keyboardType="number-pad"
               value={filters.max_players?.toString() || ''}
-              onChangeText={(text) =>
-                updateFilter('max_players', text ? parseInt(text) : undefined)
-              }
+              onChangeText={(text) => updateFilter('max_players', text ? parseInt(text) : undefined)}
             />
             <Text style={styles.playerCountLabel}>players</Text>
           </View>
@@ -332,166 +402,96 @@ export function DrillFilters({
 }
 
 function create_styles(tc: any) { return StyleSheet.create({
-  container: {
-    gap: spacing.sm,
-  },
+  container: { gap: spacing.sm },
   searchContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: tc.card,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: tc.border,
-    paddingHorizontal: spacing.md,
-    height: 44,
-    gap: spacing.sm,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: tc.card, borderRadius: borderRadius.md,
+    borderWidth: 1, borderColor: tc.border,
+    paddingHorizontal: spacing.md, height: 44, gap: spacing.sm,
   },
-  searchInput: {
-    flex: 1,
-    color: tc.foreground,
-    fontSize: 15,
-  },
+  searchInput: { flex: 1, color: tc.foreground, fontSize: 15 },
   filtersToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: tc.card,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: tc.border,
-    paddingHorizontal: spacing.md,
-    paddingVertical: 10,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: tc.card, borderRadius: borderRadius.md,
+    borderWidth: 1, borderColor: tc.border,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
   },
-  filtersToggleOpen: {
-    borderColor: tc.primary,
-  },
-  filtersToggleLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  filtersToggleText: {
-    color: tc.primary,
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  filtersToggleOpen: { borderColor: tc.primary },
+  filtersToggleLeft: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  filtersToggleText: { color: tc.primary, fontSize: 13, fontWeight: '500' },
   filterControls: {
-    backgroundColor: tc.card,
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: tc.border,
-    padding: spacing.md,
-    gap: spacing.sm,
+    backgroundColor: tc.card, borderRadius: borderRadius.md,
+    borderWidth: 1, borderColor: tc.border,
+    padding: spacing.md, gap: spacing.sm,
   },
-  filterRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
+  // Multi-category toggle row
+  multiToggleRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: tc.border,
+    marginBottom: 2,
   },
-  dropdownWrapper: {
-    flex: 1,
-    zIndex: 10,
+  multiToggleLeft: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  multiToggleText: { fontSize: 12, color: tc.mutedForeground, fontWeight: '500' },
+  multiToggleTextActive: { color: tc.primary },
+  togglePill: {
+    width: 36, height: 20, borderRadius: 10,
+    backgroundColor: tc.border,
+    justifyContent: 'center', paddingHorizontal: 2,
   },
+  togglePillActive: { backgroundColor: tc.primary },
+  toggleThumb: {
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#fff',
+  },
+  toggleThumbActive: { alignSelf: 'flex-end' },
+  // Checkbox row in multi-select
+  checkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  checkbox: {
+    width: 18, height: 18, borderRadius: 4,
+    borderWidth: 1.5, borderColor: tc.border,
+    justifyContent: 'center', alignItems: 'center',
+  },
+  checkboxSelected: { backgroundColor: tc.primary, borderColor: tc.primary },
+  checkmark: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  filterRow: { flexDirection: 'row', gap: spacing.sm },
+  dropdownWrapper: { flex: 1, zIndex: 10 },
   dropdown: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: tc.background,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: tc.border,
-    paddingHorizontal: spacing.sm,
-    height: 36,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: tc.background, borderRadius: borderRadius.sm,
+    borderWidth: 1, borderColor: tc.border,
+    paddingHorizontal: spacing.sm, height: 36,
   },
-  dropdownOpen: {
-    borderColor: tc.primary,
-  },
-  dropdownText: {
-    flex: 1,
-    color: tc.mutedForeground,
-    fontSize: 12,
-  },
-  dropdownTextActive: {
-    color: tc.foreground,
-  },
+  dropdownOpen: { borderColor: tc.primary },
+  dropdownText: { flex: 1, color: tc.mutedForeground, fontSize: 12 },
+  dropdownTextActive: { color: tc.foreground },
   dropdownMenu: {
-    position: 'relative',
-    backgroundColor: tc.card,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: tc.border,
-    marginTop: 4,
-    overflow: 'hidden',
+    position: 'relative', backgroundColor: tc.card,
+    borderRadius: borderRadius.sm, borderWidth: 1, borderColor: tc.border,
+    marginTop: 4, overflow: 'hidden',
   },
-  dropdownScroll: {
-    maxHeight: 180,
-  },
+  dropdownScroll: { maxHeight: 180 },
   dropdownOption: {
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: tc.border,
+    paddingHorizontal: spacing.sm, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: tc.border,
   },
-  dropdownOptionActive: {
-    backgroundColor: tc.primaryLight,
-  },
-  dropdownOptionText: {
-    color: tc.foreground,
-    fontSize: 12,
-  },
-  dropdownOptionTextActive: {
-    color: tc.primary,
-    fontWeight: '600',
-  },
-  playerCountRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
+  dropdownOptionActive: { backgroundColor: tc.primaryLight },
+  dropdownOptionText: { color: tc.foreground, fontSize: 12 },
+  dropdownOptionTextActive: { color: tc.primary, fontWeight: '600' },
+  playerCountRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   playerCountInput: {
-    width: 60,
-    height: 36,
-    backgroundColor: tc.background,
-    borderRadius: borderRadius.sm,
-    borderWidth: 1,
-    borderColor: tc.border,
-    paddingHorizontal: spacing.sm,
-    color: tc.foreground,
-    fontSize: 12,
-    textAlign: 'center',
+    width: 60, height: 36, backgroundColor: tc.background,
+    borderRadius: borderRadius.sm, borderWidth: 1, borderColor: tc.border,
+    paddingHorizontal: spacing.sm, color: tc.foreground, fontSize: 12, textAlign: 'center',
   },
-  playerCountDash: {
-    color: tc.mutedForeground,
-    fontSize: 12,
-  },
-  playerCountLabel: {
-    color: tc.mutedForeground,
-    fontSize: 12,
-  },
+  playerCountDash: { color: tc.mutedForeground, fontSize: 12 },
+  playerCountLabel: { color: tc.mutedForeground, fontSize: 12 },
   clearButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    gap: 4,
-    paddingVertical: 6,
-    paddingHorizontal: spacing.sm,
-    borderRadius: borderRadius.sm,
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start',
+    gap: 4, paddingVertical: 6, paddingHorizontal: spacing.sm, borderRadius: borderRadius.sm,
   },
-  clearButtonText: {
-    color: tc.mutedForeground,
-    fontSize: 12,
-  },
-  resultsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  resultsCount: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  resultsText: {
-    color: tc.mutedForeground,
-    fontSize: 12,
-  },
+  clearButtonText: { color: tc.mutedForeground, fontSize: 12 },
+  resultsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  resultsCount: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  resultsText: { color: tc.mutedForeground, fontSize: 12 },
 }); };
