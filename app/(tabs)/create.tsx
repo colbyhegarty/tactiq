@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { fetchDrills } from '../../src/lib/api';
+import { awaitPrefetch } from '../../src/lib/drillCache';
 import { PaywallModal, usePaywallGate } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -35,7 +36,18 @@ export default function CreateScreen() {
 
   const loadPickerDrills = async () => {
     setPickerLoading(true);
-    try { setPickerDrills(await fetchDrills({})); } catch {}
+    try {
+      const data = await awaitPrefetch();
+      const sorted = [...data].sort((a, b) => {
+        const hashA = a.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+        const hashB = b.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+        return hashA - hashB;
+      });
+      setPickerDrills(sorted.map(d => ({
+        id: d.id, name: d.name, category: d.category,
+        difficulty: d.difficulty, svg_url: d.svg_url,
+      } as any)));
+    } catch {}
     finally { setPickerLoading(false); }
   };
 

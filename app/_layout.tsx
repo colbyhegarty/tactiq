@@ -7,15 +7,32 @@ import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle
 import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
 import { WelcomeModal } from '../src/onboarding/components/WelcomeModal';
 import { initAnalytics } from '../src/lib/analytics';
+import { prefetchDrills } from '../src/lib/drillCache';
 
 SplashScreen.preventAutoHideAsync();
+
+// Kick off the drill fetch immediately — before any component mounts.
+const MIN_SPLASH_MS = 1500;
+const splashStart = Date.now();
+const drillPrefetch = prefetchDrills();
 
 function RootStack() {
   const { colors } = useTheme();
 
   useEffect(() => {
-    SplashScreen.hideAsync();
     initAnalytics();
+
+    // Hide splash only after both the minimum duration AND the first drill
+    // batch have resolved, so the user never sees the loading spinner.
+    const elapsed = Date.now() - splashStart;
+    const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
+
+    Promise.all([
+      drillPrefetch,
+      new Promise(resolve => setTimeout(resolve, remaining)),
+    ]).then(() => {
+      SplashScreen.hideAsync();
+    });
   }, []);
 
   return (
@@ -24,6 +41,7 @@ function RootStack() {
         screenOptions={{
           headerShown: false,
           contentStyle: { backgroundColor: colors.background },
+          sceneStyle: { backgroundColor: colors.background },
           animation: 'slide_from_right',
         }}
       >
@@ -32,9 +50,7 @@ function RootStack() {
         <Stack.Screen name="session-editor" />
         <Stack.Screen name="drill-editor" />
       </Stack>
-      {/* Welcome modal — shows on first launch only */}
       <WelcomeModal />
-      {/* Floating dev toggle — only visible in __DEV__ builds */}
       <DevSubscriptionToggle />
     </>
   );

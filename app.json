@@ -11,10 +11,11 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.colbyhegarty.tactiq",
-      "buildNumber": "7",
+      "buildNumber": "9",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "backgroundColor": "#151823"
     },
     "android": {
       "adaptiveIcon": {
@@ -24,7 +25,8 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "backgroundColor": "#151823"
     },
     "web": {
       "output": "static",
@@ -59,6 +61,7 @@
       "eas": {
         "projectId": "8b4cfc5d-14dd-439a-bdd5-bf86f6c26149"
       }
-    }
+    },
+    "backgroundColor": "#151823"
   }
 }

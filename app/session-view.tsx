@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft, Calendar,
   ChevronDown,
@@ -16,13 +16,12 @@ import {
   Users,
   X
 } from 'lucide-react-native';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
   Dimensions, FlatList, Modal,
-  ScrollView, StatusBar,
-  StyleSheet,
+  ScrollView, StatusBar,  StyleSheet,
   Text,
   TouchableOpacity,
   View,
@@ -30,7 +29,9 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { DrillDetailModal } from '../src/components/DrillDetailModal';
+import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { ShareSessionModal } from '../src/components/ShareSessionModal';
+import { convertToDrillJson } from '../src/lib/drillConverter';
 import { track } from '../src/lib/analytics';
 import { fetchDrillById } from '../src/lib/api';
 import { exportAndSharePDF } from '../src/lib/sessionPdf';
@@ -63,9 +64,38 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
   const v = create_v(tc);
   const sm = create_sm(tc);
   const title = activity.title || activity.drill_name || 'Activity';
+
+  // Track touch start position to decide if gesture is horizontal or vertical.
+  // Only enable the inner ScrollView for clearly-vertical gestures so the
+  // FlatList can claim horizontal swipes without the ScrollView intercepting them.
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+  const [scrollEnabled, setScrollEnabled] = useState(true);
+
   return (
-    <View style={{ width: pageWidth }}>
-      <ScrollView contentContainerStyle={sm.slideContent} showsVerticalScrollIndicator={false}>
+    <View style={{ width: pageWidth }}
+      onStartShouldSetResponderCapture={() => false}
+    >
+      <ScrollView
+        contentContainerStyle={sm.slideContent}
+        showsVerticalScrollIndicator={false}
+        scrollEnabled={scrollEnabled}
+        onTouchStart={(e) => {
+          touchStartX.current = e.nativeEvent.pageX;
+          touchStartY.current = e.nativeEvent.pageY;
+          setScrollEnabled(true);
+        }}
+        onTouchMove={(e) => {
+          const dx = Math.abs(e.nativeEvent.pageX - touchStartX.current);
+          const dy = Math.abs(e.nativeEvent.pageY - touchStartY.current);
+          // If horizontal movement dominates, disable scroll so FlatList can take over
+          if (dx > dy && dx > 6) {
+            setScrollEnabled(false);
+          }
+        }}
+        onTouchEnd={() => setScrollEnabled(true)}
+        onTouchCancel={() => setScrollEnabled(true)}
+      >
         <View style={sm.timeBadge}><Text style={sm.timeBadgeText}>{formatTime(startMin)} – {formatTime(startMin + activity.duration_minutes)}</Text></View>
         <Text style={sm.actTitle}>{title}</Text>
         <View style={sm.metaRow}>
@@ -74,7 +104,10 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
         </View>
         {activity.description && !drillData && <Text style={sm.descText}>{activity.description}</Text>}
         {activity.drill_svg_url && (
-          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=19' }} style={sm.diagram} contentFit="cover" /></View>
+          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=19' }} style={sm.diagram} contentFit="contain" /></View>
+        )}
+        {activity.activity_type === 'custom_drill' && !activity.drill_svg_url && activity.drill_diagram_data && (
+          <View style={sm.diagramWrap}><DrillDiagramView drillJson={convertToDrillJson(activity.drill_diagram_data)} mode="static" targetAspectRatio={4/3} /></View>
         )}
         {activity.library_drill_id && (
           <TouchableOpacity style={sm.viewDrillBtn} onPress={() => onViewDrill(activity)} disabled={loadingDrillId === activity.id}>
@@ -105,6 +138,51 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
   );
 }
 
+// ── Isolated header — updates via imperative ref so SessionMode never re-renders ──
+const SessionHeader = forwardRef<
+  { update: (i: number) => void },
+  { sessionTitle: string; totalActivities: number; onExit: () => void }
+>(({ sessionTitle, totalActivities, onExit }, ref) => {
+  const { colors: tc } = useTheme();
+  const sm = create_sm(tc);
+  const [idx, setIdx] = useState(0);
+  useImperativeHandle(ref, () => ({ update: setIdx }));
+  const progress = ((idx + 1) / totalActivities) * 100;
+  return (
+    <>
+      <View style={sm.header}>
+        <View style={{ flex: 1 }}>
+          <Text style={sm.sessionName} numberOfLines={1}>{sessionTitle}</Text>
+          <Text style={sm.activityCount}>Activity {idx + 1} of {totalActivities}</Text>
+        </View>
+        <TouchableOpacity onPress={onExit}><X size={22} color={tc.foreground} /></TouchableOpacity>
+      </View>
+      <View style={sm.progressBg}><View style={[sm.progressFill, { width: `${progress}%` }]} /></View>
+    </>
+  );
+});
+
+// ── Isolated footer — reads idxRef directly, updates only on momentum end ──
+function SessionFooter({ idxRef, total, onExit }: { idxRef: React.MutableRefObject<number>; total: number; onExit: () => void }) {
+  const { colors: tc } = useTheme();
+  const sm = create_sm(tc);
+  const [idx, setIdx] = useState(0);
+  // Listen for momentum end via a shared callback stored on the ref
+  useEffect(() => {
+    (idxRef as any)._setFooterIdx = setIdx;
+    return () => { delete (idxRef as any)._setFooterIdx; };
+  }, [idxRef]);
+  const isLast = idx === total - 1;
+  return (
+    <View style={sm.footer}>
+      <Text style={sm.navCount}>{idx + 1} / {total}</Text>
+      <TouchableOpacity style={sm.endBtn} onPress={onExit}>
+        <Text style={sm.endBtnText}>{isLast ? 'End Session' : 'Exit'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 // ── Session Mode ────────────────────────────────────────────────────
 function SessionMode({ session, drillDetails, onExit, onViewDrill, loadingDrillId, selectedDrill, onCloseDrill }: {
   session: Session; drillDetails: Record<string, Drill>;
@@ -115,20 +193,26 @@ function SessionMode({ session, drillDetails, onExit, onViewDrill, loadingDrillI
   const v = create_v(tc);
   const sm = create_sm(tc);
   const insets = useSafeAreaInsets();
-  const [idx, setIdx] = useState(0);
   const [pageWidth, setPageWidth] = useState(SW);
   const flatListRef = useRef<FlatList>(null);
   const activities = session.activities;
-  const progress = ((idx + 1) / activities.length) * 100;
 
-  // Compute start times
+  // Compute start times once
   const startTimes: number[] = [];
   let acc = 0;
   for (const a of activities) { startTimes.push(acc); acc += a.duration_minutes; }
 
+  // Keep idx in a ref so viewableItemsChanged can update the header
+  // without invalidating renderPage or any FlatList children.
+  const idxRef = useRef(0);
+  const headerRef = useRef<{ update: (i: number) => void }>(null);
+
   const onViewableItemsChanged = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && viewableItems[0].index != null) {
-      setIdx(viewableItems[0].index);
+      const i = viewableItems[0].index;
+      idxRef.current = i;
+      headerRef.current?.update(i);
+      (idxRef as any)._setFooterIdx?.(i);
     }
   }).current;
 
@@ -145,23 +229,20 @@ function SessionMode({ session, drillDetails, onExit, onViewDrill, loadingDrillI
     />
   ), [drillDetails, loadingDrillId, onViewDrill, startTimes, pageWidth]);
 
-  const isLast = idx === activities.length - 1;
-
   return (
     <Modal visible animationType="slide" statusBarTranslucent>
       <View style={[sm.container, { backgroundColor: tc.background, paddingTop: insets.top, paddingBottom: insets.bottom }]}
         onLayout={(e) => setPageWidth(e.nativeEvent.layout.width)}
       >
         <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        {/* Header */}
-        <View style={sm.header}>
-          <View style={{ flex: 1 }}>
-            <Text style={sm.sessionName} numberOfLines={1}>{session.title}</Text>
-            <Text style={sm.activityCount}>Activity {idx + 1} of {activities.length}</Text>
-          </View>
-          <TouchableOpacity onPress={onExit}><X size={22} color={tc.foreground} /></TouchableOpacity>
-        </View>
-        <View style={sm.progressBg}><View style={[sm.progressFill, { width: `${progress}%` }]} /></View>
+
+        {/* Header — isolated component so its re-renders don't touch the FlatList */}
+        <SessionHeader
+          ref={headerRef}
+          sessionTitle={session.title}
+          totalActivities={activities.length}
+          onExit={onExit}
+        />
 
         {/* Horizontal paging FlatList */}
         <FlatList
@@ -175,18 +256,17 @@ function SessionMode({ session, drillDetails, onExit, onViewDrill, loadingDrillI
           onViewableItemsChanged={onViewableItemsChanged}
           viewabilityConfig={viewabilityConfig}
           getItemLayout={(_, index) => ({ length: pageWidth, offset: pageWidth * index, index })}
-          initialNumToRender={1}
-          maxToRenderPerBatch={2}
-          windowSize={3}
+          initialNumToRender={activities.length}
+          maxToRenderPerBatch={activities.length}
+          windowSize={activities.length + 1}
         />
 
-        {/* Footer */}
-        <View style={sm.footer}>
-          <Text style={sm.navCount}>{idx + 1} / {activities.length}</Text>
-          <TouchableOpacity style={sm.endBtn} onPress={onExit}>
-            <Text style={sm.endBtnText}>{isLast ? 'End Session' : 'Exit'}</Text>
-          </TouchableOpacity>
-        </View>
+        {/* Footer — also isolated */}
+        <SessionFooter
+          idxRef={idxRef}
+          total={activities.length}
+          onExit={onExit}
+        />
       </View>
       <DrillDetailModal drill={selectedDrill} isOpen={selectedDrill !== null} onClose={onCloseDrill} isSaved={false} />
     </Modal>
@@ -293,24 +373,27 @@ export default function SessionViewScreen() {
     setShareModalOpen(true);
   };
 
-  useEffect(() => {
-    if (params.id) {
-      (async () => {
-        const s = await getSession(params.id);
-        if (s) {
-          setSession(s);
-          s.activities.forEach(async (a) => {
-            if (a.library_drill_id) {
-              try {
-                const d = await fetchDrillById(a.library_drill_id);
-                if (d) setDrillDetails(prev => ({ ...prev, [a.library_drill_id!]: d }));
-              } catch {}
-            }
-          });
-        } else { router.back(); }
-      })();
-    }
-  }, [params.id]);
+  useFocusEffect(
+    useCallback(() => {
+      if (params.id) {
+        (async () => {
+          const s = await getSession(params.id);
+          if (s) {
+            setSession(s);
+            setDrillDetails({});
+            s.activities.forEach(async (a) => {
+              if (a.library_drill_id) {
+                try {
+                  const d = await fetchDrillById(a.library_drill_id);
+                  if (d) setDrillDetails(prev => ({ ...prev, [a.library_drill_id!]: d }));
+                } catch {}
+              }
+            });
+          } else { router.back(); }
+        })();
+      }
+    }, [params.id])
+  );
 
   // Load PDF settings from profile
   useEffect(() => {
@@ -414,7 +497,7 @@ export default function SessionViewScreen() {
               return (
                 <View key={activity.id} style={v.activityRow}>
                   <View style={v.timelineCol}>
-                    <View style={v.timeNode}><Text style={v.timeNodeText}>{formatTime(startMin).replace(' min', 'm')}</Text></View>
+                    <View style={v.timeNode}><Text style={v.timeNodeText}>{startMin}m</Text></View>
                     {index < session.activities.length - 1 && <View style={v.timelineLine} />}
                   </View>
                   <View style={v.activityCard}>
@@ -424,7 +507,10 @@ export default function SessionViewScreen() {
                     </View>
                     {activity.description && !drillData && <Text style={v.actDesc}>{activity.description}</Text>}
                     {activity.drill_svg_url && (
-                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=19' }} style={{ width: '100%', height: '100%' }} contentFit="cover" /></View>
+                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=19' }} style={{ width: '100%', height: '100%' }} contentFit="contain" /></View>
+                    )}
+                    {activity.activity_type === 'custom_drill' && !activity.drill_svg_url && activity.drill_diagram_data && (
+                      <View style={v.actDiagram}><DrillDiagramView drillJson={convertToDrillJson(activity.drill_diagram_data)} mode="static" targetAspectRatio={4/3} /></View>
                     )}
                     {/* Expandable setup & instructions dropdown */}
                     <ActivityDetailsDropdown activity={activity} drillData={drillData || null} />
@@ -506,9 +592,9 @@ function create_v(tc: any) { return StyleSheet.create({
   emptyActivities: { backgroundColor: tc.card, borderRadius: borderRadius.lg, borderWidth: 1, borderStyle: 'dashed', borderColor: tc.border, padding: spacing.xl, alignItems: 'center' },
   emptyText: { fontSize: 13, color: tc.mutedForeground },
   activityRow: { flexDirection: 'row', gap: spacing.md, marginBottom: spacing.sm },
-  timelineCol: { alignItems: 'center', width: 40 },
-  timeNode: { width: 40, height: 40, borderRadius: 20, backgroundColor: tc.card, borderWidth: 2, borderColor: 'rgba(74,157,110,0.3)', justifyContent: 'center', alignItems: 'center' },
-  timeNodeText: { fontSize: 9, fontWeight: '700', color: tc.primary },
+  timelineCol: { alignItems: 'center', width: 44 },
+  timeNode: { width: 44, height: 44, borderRadius: 22, backgroundColor: tc.card, borderWidth: 2, borderColor: 'rgba(74,157,110,0.3)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 2 },
+  timeNodeText: { fontSize: 9, fontWeight: '700', color: tc.primary, textAlign: 'center' },
   timelineLine: { flex: 1, width: 2, backgroundColor: 'rgba(74,157,110,0.15)', marginTop: 4 },
   activityCard: { flex: 1, backgroundColor: tc.card, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: tc.border, padding: spacing.md },
   actCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.xs },
@@ -516,7 +602,7 @@ function create_v(tc: any) { return StyleSheet.create({
   actDurBadge: { backgroundColor: tc.primaryLight, paddingHorizontal: 8, paddingVertical: 3, borderRadius: borderRadius.full },
   actDurText: { fontSize: 10, fontWeight: '600', color: tc.primary },
   actDesc: { fontSize: 13, color: tc.mutedForeground, lineHeight: 19 },
-  actDiagram: { width: '100%', aspectRatio: 16 / 10, borderRadius: borderRadius.md, overflow: 'hidden', marginTop: spacing.sm, backgroundColor: tc.fieldDark },
+  actDiagram: { width: '100%', aspectRatio: 4 / 3, borderRadius: borderRadius.md, overflow: 'hidden', marginTop: spacing.sm, backgroundColor: tc.fieldDark },
   actNotes: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, marginTop: spacing.sm, backgroundColor: tc.primaryLight, borderRadius: borderRadius.sm, padding: spacing.sm },
   actNotesText: { flex: 1, fontSize: 12, color: tc.foreground },
   // Dropdown styles

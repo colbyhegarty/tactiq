@@ -25,6 +25,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
 import { generateActivityId, getSessions, saveSession, updateSession } from '../lib/sessionStorage';
@@ -57,7 +58,8 @@ interface AddToSessionModalProps {
 
 function AddToSessionModal({ visible, drill, onClose }: AddToSessionModalProps) {
   const { colors: tc } = useTheme();
-  const s = create_ats(tc);
+  const insets = useSafeAreaInsets();
+  const s = create_ats(tc, insets.bottom);
   const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState<'pick' | 'new'>('pick');
@@ -124,105 +126,102 @@ function AddToSessionModal({ visible, drill, onClose }: AddToSessionModalProps) 
 
   return (
     <Modal visible={visible} transparent animationType="slide" statusBarTranslucent onRequestClose={onClose}>
+      {/* Full-screen dim layer */}
+      <Pressable style={s.backdrop} onPress={onClose} />
+
+      {/* Sheet anchored to bottom */}
       <KeyboardAvoidingView
         style={s.kavWrapper}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 24}
       >
-        <View style={s.backdrop}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-          <View style={s.sheet}>
-            <View style={s.header}>
-              <Text style={s.title}>{step === 'pick' ? 'Add to Session' : 'New Session'}</Text>
-              <TouchableOpacity onPress={onClose}><X size={20} color={tc.foreground} /></TouchableOpacity>
-            </View>
-
-            {step === 'pick' ? (
-              <View style={s.pickContainer}>
-                {/* Always-visible pinned button */}
-                <View style={s.pinnedBtn}>
-                  <TouchableOpacity style={s.newSessionBtn} onPress={() => setStep('new')}>
-                    <Plus size={18} color={tc.primaryForeground} />
-                    <Text style={s.newSessionBtnText}>New Session</Text>
-                  </TouchableOpacity>
-                </View>
-
-                {/* Scrollable session list */}
-                {loading ? (
-                  <ActivityIndicator size="small" color={tc.primary} style={{ marginTop: 24 }} />
-                ) : sessions.length === 0 ? (
-                  <Text style={s.emptyText}>No existing sessions. Create a new one above.</Text>
-                ) : (
-                  <>
-                    <Text style={s.sectionLabel}>EXISTING SESSIONS</Text>
-                    <ScrollView style={s.sessionList} contentContainerStyle={{ paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-                      {sessions.map(sess => (
-                        <TouchableOpacity
-                          key={sess.id}
-                          style={s.sessionRow}
-                          onPress={() => addToExisting(sess)}
-                          disabled={saving}
-                        >
-                          <View style={{ flex: 1 }}>
-                            <Text style={s.sessionName} numberOfLines={1}>{sess.title || 'Untitled Session'}</Text>
-                            <Text style={s.sessionMeta}>
-                              {sess.activities.length} activit{sess.activities.length === 1 ? 'y' : 'ies'}
-                              {sess.session_date ? ` · ${sess.session_date}` : ''}
-                            </Text>
-                          </View>
-                          <Plus size={16} color={tc.primary} />
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  </>
-                )}
-              </View>
-            ) : (
-              <View style={s.newStepBody}>
-                <Text style={s.fieldLabel}>Session Name</Text>
-                <TextInput
-                  style={s.input}
-                  value={newSessionName}
-                  onChangeText={setNewSessionName}
-                  placeholder="e.g., Tuesday Training"
-                  placeholderTextColor={tc.mutedForeground}
-                  autoFocus
-                  returnKeyType="done"
-                  onSubmitEditing={createNew}
-                />
-                <View style={s.newFooter}>
-                  <TouchableOpacity style={s.backBtn} onPress={() => setStep('pick')}>
-                    <Text style={s.backBtnText}>← Back</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[s.createBtn, (!newSessionName.trim() || saving) && { opacity: 0.4 }]}
-                    onPress={createNew}
-                    disabled={!newSessionName.trim() || saving}
-                  >
-                    <Text style={s.createBtnText}>{saving ? 'Creating...' : 'Create & Add'}</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+        <View style={[s.sheet, { paddingBottom: insets.bottom || 24 }]}>
+          <View style={s.handle} />
+          <View style={s.header}>
+            <Text style={s.title}>{step === 'pick' ? 'Add to Session' : 'New Session'}</Text>
+            <TouchableOpacity onPress={onClose}><X size={20} color={tc.foreground} /></TouchableOpacity>
           </View>
+
+          {step === 'pick' ? (
+            <View style={s.pickContainer}>
+              <TouchableOpacity style={s.newSessionBtn} onPress={() => setStep('new')}>
+                <Plus size={18} color={tc.primaryForeground} />
+                <Text style={s.newSessionBtnText}>New Session</Text>
+              </TouchableOpacity>
+
+              {loading ? (
+                <ActivityIndicator size="small" color={tc.primary} style={{ marginTop: 24 }} />
+              ) : sessions.length === 0 ? (
+                <Text style={s.emptyText}>No existing sessions. Create a new one above.</Text>
+              ) : (
+                <>
+                  <Text style={s.sectionLabel}>EXISTING SESSIONS</Text>
+                  <ScrollView style={s.sessionList} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
+                    {sessions.map(sess => (
+                      <TouchableOpacity
+                        key={sess.id}
+                        style={s.sessionRow}
+                        onPress={() => addToExisting(sess)}
+                        disabled={saving}
+                      >
+                        <View style={{ flex: 1 }}>
+                          <Text style={s.sessionName} numberOfLines={1}>{sess.title || 'Untitled Session'}</Text>
+                          <Text style={s.sessionMeta}>
+                            {sess.activities.length} activit{sess.activities.length === 1 ? 'y' : 'ies'}
+                            {sess.session_date ? ` · ${sess.session_date}` : ''}
+                          </Text>
+                        </View>
+                        <Plus size={16} color={tc.primary} />
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                </>
+              )}
+            </View>
+          ) : (
+            <View style={s.newStepBody}>
+              <Text style={s.fieldLabel}>Session Name</Text>
+              <TextInput
+                style={s.input}
+                value={newSessionName}
+                onChangeText={setNewSessionName}
+                placeholder="e.g., Tuesday Training"
+                placeholderTextColor={tc.mutedForeground}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={createNew}
+              />
+              <View style={s.newFooter}>
+                <TouchableOpacity style={s.backBtn} onPress={() => setStep('pick')}>
+                  <Text style={s.backBtnText}>← Back</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[s.createBtn, (!newSessionName.trim() || saving) && { opacity: 0.4 }]}
+                  onPress={createNew}
+                  disabled={!newSessionName.trim() || saving}
+                >
+                  <Text style={s.createBtnText}>{saving ? 'Creating...' : 'Create & Add'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
   );
 }
 
-function create_ats(tc: any) { return StyleSheet.create({
-  kavWrapper: { flex: 1, justifyContent: 'flex-end' },
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: tc.background, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, maxHeight: '70%', paddingBottom: 30 },
+function create_ats(tc: any, bottomInset: number = 0) { return StyleSheet.create({
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  kavWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '85%' },
+  sheet: { backgroundColor: tc.background, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, flex: 1 },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: tc.border, alignSelf: 'center', marginTop: 8, marginBottom: 4 },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: tc.border },
   title: { fontSize: 17, fontWeight: '600', color: tc.foreground },
-  body: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   pickContainer: { paddingHorizontal: spacing.md, paddingTop: spacing.md, flex: 1 },
-  pinnedBtn: { marginBottom: spacing.md },
   sessionList: { flex: 1 },
-  newStepBody: { paddingHorizontal: spacing.md, paddingTop: spacing.md, paddingBottom: spacing.md },
-  newSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, borderRadius: borderRadius.md, paddingVertical: 14 },
+  newStepBody: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
+  newSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, borderRadius: borderRadius.md, paddingVertical: 14, marginBottom: spacing.md },
   newSessionBtnText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
   sectionLabel: { fontSize: 11, fontWeight: '600', color: tc.mutedForeground, letterSpacing: 1, marginBottom: spacing.sm },
   emptyText: { textAlign: 'center', color: tc.mutedForeground, fontSize: 13, paddingVertical: 24 },

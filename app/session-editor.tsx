@@ -39,7 +39,7 @@ import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
 import { getSavedDrills } from '../src/lib/storage';
-import { supabase } from '../src/lib/supabase';
+import { awaitPrefetch } from '../src/lib/drillCache';
 import { borderRadius, spacing } from '../src/theme/colors';
 import { useTheme } from '../src/theme/ThemeContext';
 import { EquipmentItem, Session, SessionActivity } from '../src/types/session';
@@ -172,16 +172,20 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
   useEffect(() => {
     if (step === 'library' && drills.length === 0) {
       setLoading(true);
-      supabase.from('drill_list')
-        .select('id, name, category, difficulty, duration, player_count, svg_url')
-        .order('name')
-        .then(({ data }) => {
-          setDrills((data || []).map((d: any) => ({
-            id: d.id, name: d.name, category: d.category, difficulty: d.difficulty,
-            duration: d.duration, player_count: d.player_count, svg_url: d.svg_url,
-          })));
-          setLoading(false);
+      awaitPrefetch().then(data => {
+        // Apply same hash shuffle used in the library tab
+        const sorted = [...data].sort((a, b) => {
+          const hashA = a.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+          const hashB = b.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+          return hashA - hashB;
         });
+        setDrills(sorted.map(d => ({
+          id: d.id, name: d.name, category: d.category, difficulty: d.difficulty,
+          duration: String(d.duration ?? ''), player_count: d.player_count_display || String(d.player_count ?? ''),
+          svg_url: d.svg_url,
+        })));
+        setLoading(false);
+      });
     }
   }, [step]);
 
@@ -251,6 +255,7 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
         drill_name: selected.name, drill_svg_url: selected.svg_url,
         drill_category: selected.category, drill_difficulty: selected.difficulty,
         drill_player_count: selected.player_count,
+        drill_diagram_data: isCustom ? selected.diagramData : undefined,
       });
     }
     onClose();
@@ -520,6 +525,11 @@ function ActivityCard({ activity, index, startTime, onMoveUp, onMoveDown, onEdit
           <Image source={{ uri: activity.drill_svg_url + '?v=19' }} style={ac.diagram} contentFit="contain" />
         </View>
       )}
+      {activity.activity_type === 'custom_drill' && !activity.drill_svg_url && activity.drill_diagram_data && (
+        <View style={ac.diagramWrap}>
+          <DrillDiagramView drillJson={convertToDrillJson(activity.drill_diagram_data)} mode="static" targetAspectRatio={4/3} />
+        </View>
+      )}
       {activity.description ? <Text style={ac.desc} numberOfLines={2}>{activity.description}</Text> : null}
       {activity.activity_notes ? (
         <View style={ac.notesRow}><StickyNote size={12} color={tc.primary} /><Text style={ac.notesText}>{activity.activity_notes}</Text></View>
@@ -771,7 +781,7 @@ function create_ac(tc: any) { return StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   meta: { fontSize: 11, color: tc.mutedForeground },
   actions: { flexDirection: 'row', gap: spacing.sm, paddingTop: 2 },
-  diagramWrap: { width: '100%', aspectRatio: 16 / 10, borderRadius: borderRadius.sm, overflow: 'hidden', marginTop: spacing.sm, backgroundColor: tc.fieldDark },
+  diagramWrap: { width: '100%', aspectRatio: 4 / 3, borderRadius: borderRadius.sm, overflow: 'hidden', marginTop: spacing.sm, backgroundColor: tc.fieldDark },
   diagram: { width: '100%', height: '100%' },
   desc: { fontSize: 13, color: tc.mutedForeground, marginTop: spacing.xs },
   notesRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.xs, marginTop: spacing.xs, backgroundColor: 'rgba(139,145,158,0.08)', borderRadius: borderRadius.sm, padding: spacing.xs },

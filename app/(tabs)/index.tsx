@@ -31,6 +31,7 @@ import {
   warmUpBackend,
 } from '../../src/lib/api';
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
+import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillCache';
 import { PaywallModal, usePaywallGate, useSubscription } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -52,7 +53,7 @@ export default function LibraryScreen() {
   const [drillsMeta, setDrillsMeta] = useState<LibraryDrillMeta[]>([]);
   const [selectedDrill, setSelectedDrill] = useState<Drill | null>(null);
   const [savedState, setSavedState] = useState<Record<string, boolean>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingDrill, setIsLoadingDrill] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,36 +95,47 @@ export default function LibraryScreen() {
         serverFilters.has_animation = filters.has_animation;
 
       const hasServerFilters = Object.keys(serverFilters).length > 0;
-      const drillsRes = hasServerFilters
-        ? await fetchFilteredDrills(serverFilters)
-        : await fetchLibraryDrills();
 
-      if (drillsRes.success) {
-        let filteredDrills = drillsRes.drills;
-        filteredDrills = filterByPlayerCount(filteredDrills, filters.min_players, filters.max_players);
-        filteredDrills = filterByDuration(filteredDrills, filters.duration);
-        filteredDrills = filterByAgeGroup(filteredDrills, filters.age_group);
-
-        // Multi-category filter — applied client-side
-        const selectedCats: string[] = (filters as any).categories;
-        if (selectedCats?.length > 0) {
-          filteredDrills = filteredDrills.filter((d) => {
-            const drillCats = (d.category || '').split(',').map((c: string) => c.trim());
-            return selectedCats.some((sc) => drillCats.includes(sc));
-          });
+      let rawDrills: LibraryDrillMeta[];
+      if (!hasServerFilters) {
+        rawDrills = await awaitPrefetch();
+        // If the prefetch failed (e.g. no network at launch), retry now
+        if (didPrefetchFail()) {
+          clearCache();
+          const retry = await fetchLibraryDrills();
+          if (retry.success) rawDrills = retry.drills;
+          else throw new Error('Failed to load drills');
         }
-
-        if (!filters.search) {
-          filteredDrills = [...filteredDrills].sort((a, b) => {
-            const hashA = a.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-            const hashB = b.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-            return hashA - hashB;
-          });
-        }
-
-        setDrillsMeta(filteredDrills);
-        setPage(1);
+      } else {
+        clearCache();
+        const drillsRes = await fetchFilteredDrills(serverFilters);
+        rawDrills = drillsRes.success ? drillsRes.drills : [];
       }
+
+      let filteredDrills = rawDrills;
+      filteredDrills = filterByPlayerCount(filteredDrills, filters.min_players, filters.max_players);
+      filteredDrills = filterByDuration(filteredDrills, filters.duration);
+      filteredDrills = filterByAgeGroup(filteredDrills, filters.age_group);
+
+      // Multi-category filter — applied client-side
+      const selectedCats: string[] = (filters as any).categories;
+      if (selectedCats?.length > 0) {
+        filteredDrills = filteredDrills.filter((d) => {
+          const drillCats = (d.category || '').split(',').map((c: string) => c.trim());
+          return selectedCats.some((sc) => drillCats.includes(sc));
+        });
+      }
+
+      if (!filters.search) {
+        filteredDrills = [...filteredDrills].sort((a, b) => {
+          const hashA = a.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+          const hashB = b.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
+          return hashA - hashB;
+        });
+      }
+
+      setDrillsMeta(filteredDrills);
+      setPage(1);
     } catch (err: any) {
       setError(err.message || 'Failed to load drills');
     } finally {
