@@ -72,7 +72,12 @@ function AddToSessionModal({ visible, drill, onClose }: AddToSessionModalProps) 
       setNewSessionName('');
       setLoading(true);
       getSessions().then(all => {
-        all.sort((a, b) => b.created_at.localeCompare(a.created_at));
+        all.sort((a, b) => {
+          if (!a.session_date && !b.session_date) return 0;
+          if (!a.session_date) return 1;
+          if (!b.session_date) return -1;
+          return b.session_date.localeCompare(a.session_date);
+        });
         setSessions(all);
         setLoading(false);
       });

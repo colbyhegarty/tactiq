@@ -149,7 +149,13 @@ export default function SessionsScreen() {
 
   const loadSessions = async () => {
     const sess = await getSessions();
-    setSessions(sess.sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
+    setSessions(sess.sort((a, b) => {
+      // Undated sessions sink to the bottom
+      if (!a.session_date && !b.session_date) return 0;
+      if (!a.session_date) return 1;
+      if (!b.session_date) return -1;
+      return b.session_date.localeCompare(a.session_date);
+    }));
   };
 
   /** Gated session creation — free users can only have 1 session */
