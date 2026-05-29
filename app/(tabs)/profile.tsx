@@ -331,9 +331,6 @@ export default function ProfileScreen() {
       </View>
 
       <ScrollView style={ps.scrollView} contentContainerStyle={ps.scrollContent} showsVerticalScrollIndicator={false}>
-        {/* Subscription Status / Upgrade Card */}
-        <PlanStatusCard onUpgrade={() => setShowPaywall(true)} />
-
         {/* Profile Card */}
         <View style={[ps.profileCard, { backgroundColor: colors.card, borderColor: colors.border }]}>
           <View style={ps.profileBody}>
@@ -352,6 +349,8 @@ export default function ProfileScreen() {
               </TouchableOpacity>
               <Text style={[ps.profileName, { color: colors.foreground }]}>{profile.name || 'Coach'}</Text>
               {profile.teamName ? <Text style={[ps.profileTeam, { color: colors.mutedForeground }]}>{profile.teamName}</Text> : null}
+              {/* Subtle plan pill — sits quietly below the name */}
+              <PlanStatusCard onUpgrade={() => setShowPaywall(true)} />
             </View>
             <View style={ps.statsRow}>
               <View style={[ps.statBox, { backgroundColor: colors.primaryLight }]}>

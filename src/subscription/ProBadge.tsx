@@ -8,7 +8,6 @@ import { FREE_LIMITS } from '../types/subscription';
 
 interface ProBadgeProps {
   onPress: () => void;
-  /** Compact mode for header bars */
   compact?: boolean;
 }
 
@@ -56,8 +55,8 @@ export function ProBadge({ onPress, compact = false }: ProBadgeProps) {
 }
 
 /**
- * Shows current plan status — "Pro" badge for paid users,
- * usage summary for free users.
+ * Subtle inline pill — sits below the user's name in the profile card.
+ * Pro: small green "Pro" chip. Free: muted nudge with upgrade tap target.
  */
 export function PlanStatusCard({ onUpgrade }: { onUpgrade: () => void }) {
   const { colors } = useTheme();
@@ -65,52 +64,36 @@ export function PlanStatusCard({ onUpgrade }: { onUpgrade: () => void }) {
 
   if (subscription.isProUser) {
     return (
-      <View style={[cs.statusCard, { backgroundColor: colors.primaryLight, borderColor: colors.primary }]}>
-        <View style={[cs.statusIconCircle, { backgroundColor: colors.primary }]}>
-          <Crown size={16} color="#fff" />
-        </View>
-        <View style={cs.statusContent}>
-          <Text style={[cs.statusTitle, { color: colors.primary }]}>Pro Plan</Text>
-          <Text style={[cs.statusSubtitle, { color: colors.mutedForeground }]}>
-            All features unlocked
-          </Text>
-        </View>
+      <View style={[cs.pill, { backgroundColor: colors.primaryLight }]}>
+        <Crown size={11} color={colors.primary} />
+        <Text style={[cs.pillText, { color: colors.primary }]}>Pro</Text>
       </View>
     );
   }
 
   return (
     <TouchableOpacity
-      style={[cs.statusCard, { backgroundColor: colors.card, borderColor: colors.border }]}
+      style={[cs.pill, { backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border }]}
       onPress={onUpgrade}
       activeOpacity={0.7}
     >
-      <View style={cs.statusContent}>
-        <View style={cs.statusHeaderRow}>
-          <Text style={[cs.statusTitle, { color: colors.foreground }]}>Free Plan</Text>
-          <View style={[cs.upgradePill, { backgroundColor: colors.primary }]}>
-            <Crown size={10} color="#fff" />
-            <Text style={cs.upgradePillText}>UPGRADE</Text>
-          </View>
-        </View>
-        <Text style={[cs.statusSubtitle, { color: colors.mutedForeground }]}>
-          {FREE_LIMITS.maxSessions} session · {FREE_LIMITS.maxCustomDrills} custom drills · Limited library
-        </Text>
-      </View>
-      <ChevronRight size={16} color={colors.mutedForeground} />
+      <Text style={[cs.pillText, { color: colors.mutedForeground }]}>Free</Text>
+      <View style={[cs.pillDivider, { backgroundColor: colors.border }]} />
+      <Crown size={11} color={colors.primary} />
+      <Text style={[cs.pillText, { color: colors.primary }]}>Upgrade</Text>
     </TouchableOpacity>
   );
 }
 
 const cs = StyleSheet.create({
-  // Compact pill
+  // Compact pill (header bars)
   compactBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 10, paddingVertical: 6, borderRadius: borderRadius.full,
   },
   compactText: { fontSize: 11, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
 
-  // Card (profile page)
+  // Full upgrade card (used elsewhere)
   card: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     padding: spacing.md, borderRadius: borderRadius.lg,
@@ -124,23 +107,14 @@ const cs = StyleSheet.create({
   cardTitle: { fontSize: 15, fontWeight: '600', marginBottom: 2 },
   cardSubtitle: { fontSize: 12, lineHeight: 16 },
 
-  // Status card
-  statusCard: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    padding: spacing.md, borderRadius: borderRadius.lg,
-    borderWidth: 1, marginBottom: spacing.md,
+  // Inline status pill
+  pill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    alignSelf: 'center',
+    paddingHorizontal: 12, paddingVertical: 5,
+    borderRadius: borderRadius.full,
+    marginTop: 6,
   },
-  statusIconCircle: {
-    width: 36, height: 36, borderRadius: 18,
-    justifyContent: 'center', alignItems: 'center',
-  },
-  statusContent: { flex: 1 },
-  statusHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 2 },
-  statusTitle: { fontSize: 14, fontWeight: '600' },
-  statusSubtitle: { fontSize: 12 },
-  upgradePill: {
-    flexDirection: 'row', alignItems: 'center', gap: 3,
-    paddingHorizontal: 8, paddingVertical: 2, borderRadius: borderRadius.full,
-  },
-  upgradePillText: { fontSize: 9, fontWeight: '700', color: '#fff', letterSpacing: 0.5 },
+  pillText: { fontSize: 12, fontWeight: '600' },
+  pillDivider: { width: 1, height: 10 },
 });
