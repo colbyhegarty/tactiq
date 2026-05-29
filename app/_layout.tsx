@@ -4,8 +4,6 @@ import { useEffect } from 'react';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 import { SubscriptionProvider } from '../src/subscription/SubscriptionContext';
 import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle';
-import { OnboardingProvider } from '../src/onboarding/OnboardingContext';
-import { WelcomeModal } from '../src/onboarding/components/WelcomeModal';
 import { initAnalytics } from '../src/lib/analytics';
 import { prefetchDrills } from '../src/lib/drillCache';
 
@@ -50,7 +48,6 @@ function RootStack() {
         <Stack.Screen name="session-editor" />
         <Stack.Screen name="drill-editor" />
       </Stack>
-      <WelcomeModal />
       <DevSubscriptionToggle />
     </>
   );
@@ -60,9 +57,7 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <SubscriptionProvider>
-        <OnboardingProvider>
-          <RootStack />
-        </OnboardingProvider>
+        <RootStack />
       </SubscriptionProvider>
     </ThemeProvider>
   );

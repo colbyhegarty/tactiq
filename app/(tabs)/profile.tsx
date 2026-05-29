@@ -46,7 +46,6 @@ import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sess
 import { clearAllData, getSavedDrills, getUserProfile, removeDrill, saveUserProfile } from '../../src/lib/storage';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { PlanStatusCard, PaywallModal } from '../../src/subscription';
-import { useOnboarding } from '../../src/onboarding';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { CustomDrill } from '../../src/types/customDrill';
 import { defaultPdfSettings, Drill, PdfSettings, UserProfile } from '../../src/types/drill';
@@ -57,7 +56,6 @@ type ProfileTab = 'custom' | 'saved' | 'sessions';
 export default function ProfileScreen() {
   const router = useRouter();
   const { colors, isDark, toggleTheme } = useTheme();
-  const { resetOnboarding, isDismissed: onboardingDismissed } = useOnboarding();
   const [profile, setProfile] = useState<UserProfile>({
     name: '', email: '', teamName: '',
     defaultAgeGroup: 'Not Specified', defaultSkillLevel: 'Not Specified', defaultPlayerCount: 12,
@@ -467,13 +465,6 @@ export default function ProfileScreen() {
 
             <View style={[ps.contactsDivider, { backgroundColor: colors.border }]} />
             <ContactsManager contacts={contacts} onContactsChange={setContacts} parentScrollRef={settingsScrollRef} />
-
-            <TouchableOpacity style={ps.clearDataButton} onPress={() => {
-              resetOnboarding();
-              Alert.alert('Onboarding Reset', 'The welcome screen and tips will show again next time you open the app.');
-            }}>
-              <Text style={[ps.clearDataText, { color: colors.primary }]}>Reset Onboarding Tips</Text>
-            </TouchableOpacity>
 
             <TouchableOpacity style={ps.clearDataButton} onPress={handleClearAllData}>
               <Text style={ps.clearDataText}>Clear All Data</Text>
