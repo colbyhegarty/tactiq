@@ -87,6 +87,7 @@ export function customDrillToDrill(custom: CustomDrill): Drill {
     age_group: formData.ageGroup || undefined,
     difficulty: formData.difficulty || undefined,
     diagram_json: convertToDrillJson(diagramData),
+    raw_diagram_data: diagramData,
     setup: formData.setupText || undefined,
     instructions: formData.instructionsText || undefined,
     coaching_points: formData.coachingPointsText || undefined,

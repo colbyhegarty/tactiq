@@ -84,22 +84,28 @@ function AddToSessionModal({ visible, drill, onClose }: AddToSessionModalProps) 
     }
   }, [visible]);
 
-  const buildActivity = (): SessionActivity => ({
-    id: generateActivityId(),
-    sort_order: 0,
-    activity_type: 'library_drill',
-    library_drill_id: drill.id,
-    custom_drill_id: null,
-    title: '',
-    description: '',
-    duration_minutes: typeof drill.duration === 'number' ? drill.duration : parseInt(String(drill.duration || '15')) || 15,
-    activity_notes: '',
-    drill_name: drill.name,
-    drill_svg_url: drill.svg_url,
-    drill_category: drill.category,
-    drill_difficulty: drill.difficulty,
-    drill_player_count: drill.player_count_display || String(drill.player_count || ''),
-  });
+  const buildActivity = (): SessionActivity => {
+    const isCustom = drill.source === 'custom';
+    return {
+      id: generateActivityId(),
+      sort_order: 0,
+      activity_type: isCustom ? 'custom_drill' : 'library_drill',
+      library_drill_id: isCustom ? null : drill.id,
+      custom_drill_id: isCustom ? drill.id : null,
+      title: '',
+      description: '',
+      duration_minutes: typeof drill.duration === 'number' ? drill.duration : parseInt(String(drill.duration || '15')) || 15,
+      activity_notes: '',
+      drill_name: drill.name,
+      drill_svg_url: drill.svg_url,
+      drill_category: drill.category,
+      drill_difficulty: drill.difficulty,
+      drill_player_count: drill.player_count_display || String(drill.player_count || ''),
+      drill_diagram_data: isCustom ? drill.raw_diagram_data : undefined,
+      drill_setup: isCustom ? drill.setup : undefined,
+      drill_instructions: isCustom ? drill.instructions : undefined,
+    };
+  };
 
   const addToExisting = async (session: Session) => {
     setSaving(true);

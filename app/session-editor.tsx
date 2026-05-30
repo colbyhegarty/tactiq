@@ -39,7 +39,7 @@ import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
 import { getSavedDrills } from '../src/lib/storage';
-import { awaitPrefetch } from '../src/lib/drillCache';
+import { supabase } from '../src/lib/supabase';
 import { borderRadius, spacing } from '../src/theme/colors';
 import { useTheme } from '../src/theme/ThemeContext';
 import { EquipmentItem, Session, SessionActivity } from '../src/types/session';
@@ -124,6 +124,7 @@ interface DrillOption {
   id: string; name: string; category?: string; difficulty?: string;
   duration?: string; player_count?: string; svg_url?: string;
   diagramData?: any;
+  setupText?: string; instructionsText?: string;
 }
 
 function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActivityModalProps) {
@@ -172,20 +173,16 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
   useEffect(() => {
     if (step === 'library' && drills.length === 0) {
       setLoading(true);
-      awaitPrefetch().then(data => {
-        // Apply same hash shuffle used in the library tab
-        const sorted = [...data].sort((a, b) => {
-          const hashA = a.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-          const hashB = b.id.split('').reduce((h, c) => ((h << 5) - h + c.charCodeAt(0)) | 0, 0);
-          return hashA - hashB;
+      supabase.from('drill_list')
+        .select('id, name, category, difficulty, duration, player_count, svg_url')
+        .order('name')
+        .then(({ data }) => {
+          setDrills((data || []).map((d: any) => ({
+            id: d.id, name: d.name, category: d.category, difficulty: d.difficulty,
+            duration: d.duration, player_count: d.player_count, svg_url: d.svg_url,
+          })));
+          setLoading(false);
         });
-        setDrills(sorted.map(d => ({
-          id: d.id, name: d.name, category: d.category, difficulty: d.difficulty,
-          duration: String(d.duration ?? ''), player_count: d.player_count_display || String(d.player_count ?? ''),
-          svg_url: d.svg_url,
-        })));
-        setLoading(false);
-      });
     }
   }, [step]);
 
@@ -202,6 +199,8 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
           player_count: d.formData.playerCount,
           svg_url: undefined,
           diagramData: d.diagramData,
+          setupText: d.formData.setupText || undefined,
+          instructionsText: d.formData.instructionsText || undefined,
         })));
       })();
     }
@@ -256,6 +255,8 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
         drill_category: selected.category, drill_difficulty: selected.difficulty,
         drill_player_count: selected.player_count,
         drill_diagram_data: isCustom ? selected.diagramData : undefined,
+        drill_setup: isCustom ? selected.setupText : undefined,
+        drill_instructions: isCustom ? selected.instructionsText : undefined,
       });
     }
     onClose();

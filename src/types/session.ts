@@ -22,6 +22,8 @@ export interface SessionActivity {
   drill_player_count?: string;
   drill_setup?: string;
   drill_instructions?: string;
+  drill_coaching_points?: string;
+  drill_variations?: string;
   drill_diagram_data?: any; // custom drill diagram, stored locally
 }
 

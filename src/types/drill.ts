@@ -101,6 +101,7 @@ export interface Drill {
   difficulty?: string;
   svg_url?: string;
   diagram_json?: DrillJsonData;
+  raw_diagram_data?: any; // original DiagramData, only present for custom drills
   has_animation?: boolean;
   animation_json?: {
     duration: number;

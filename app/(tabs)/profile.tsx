@@ -188,7 +188,7 @@ export default function ProfileScreen() {
         <View style={gridCols === 2 ? ps.grid2 : undefined}>
           {customDrills.map((drill) => (
             <View key={drill.id} style={gridCols === 2 ? ps.gridItem : undefined}>
-              <CustomDrillCard drill={drill} onView={(d) => setSelectedDrill(customDrillToDrill(d))} onDelete={handleDeleteCustomDrill} compact={gridCols === 2} />
+              <CustomDrillCard drill={drill} onView={(d) => setSelectedDrill(customDrillToDrill(d))} onEdit={(d) => router.push({ pathname: '/drill-editor', params: { editId: d.id } })} onDelete={handleDeleteCustomDrill} compact={gridCols === 2} />
             </View>
           ))}
         </View>

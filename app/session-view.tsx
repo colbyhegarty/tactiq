@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft, Calendar,
   ChevronDown,
@@ -31,7 +31,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { DrillDetailModal } from '../src/components/DrillDetailModal';
 import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { ShareSessionModal } from '../src/components/ShareSessionModal';
-import { convertToDrillJson } from '../src/lib/drillConverter';
+import { getCustomDrill } from '../src/lib/customDrillStorage';
+import { convertToDrillJson, customDrillToDrill } from '../src/lib/drillConverter';
 import { track } from '../src/lib/analytics';
 import { fetchDrillById } from '../src/lib/api';
 import { exportAndSharePDF } from '../src/lib/sessionPdf';
@@ -110,6 +111,11 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
           <View style={sm.diagramWrap}><DrillDiagramView drillJson={convertToDrillJson(activity.drill_diagram_data)} mode="static" targetAspectRatio={4/3} /></View>
         )}
         {activity.library_drill_id && (
+          <TouchableOpacity style={sm.viewDrillBtn} onPress={() => onViewDrill(activity)} disabled={loadingDrillId === activity.id}>
+            <Eye size={16} color={tc.primary} /><Text style={sm.viewDrillText}>{loadingDrillId === activity.id ? 'Loading...' : 'View Full Drill Details'}</Text>
+          </TouchableOpacity>
+        )}
+        {activity.activity_type === 'custom_drill' && activity.custom_drill_id && (
           <TouchableOpacity style={sm.viewDrillBtn} onPress={() => onViewDrill(activity)} disabled={loadingDrillId === activity.id}>
             <Eye size={16} color={tc.primary} /><Text style={sm.viewDrillText}>{loadingDrillId === activity.id ? 'Loading...' : 'View Full Drill Details'}</Text>
           </TouchableOpacity>
@@ -373,27 +379,24 @@ export default function SessionViewScreen() {
     setShareModalOpen(true);
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      if (params.id) {
-        (async () => {
-          const s = await getSession(params.id);
-          if (s) {
-            setSession(s);
-            setDrillDetails({});
-            s.activities.forEach(async (a) => {
-              if (a.library_drill_id) {
-                try {
-                  const d = await fetchDrillById(a.library_drill_id);
-                  if (d) setDrillDetails(prev => ({ ...prev, [a.library_drill_id!]: d }));
-                } catch {}
-              }
-            });
-          } else { router.back(); }
-        })();
-      }
-    }, [params.id])
-  );
+  useEffect(() => {
+    if (params.id) {
+      (async () => {
+        const s = await getSession(params.id);
+        if (s) {
+          setSession(s);
+          s.activities.forEach(async (a) => {
+            if (a.library_drill_id) {
+              try {
+                const d = await fetchDrillById(a.library_drill_id);
+                if (d) setDrillDetails(prev => ({ ...prev, [a.library_drill_id!]: d }));
+              } catch {}
+            }
+          });
+        } else { router.back(); }
+      })();
+    }
+  }, [params.id]);
 
   // Load PDF settings from profile
   useEffect(() => {
@@ -404,11 +407,15 @@ export default function SessionViewScreen() {
   }, []);
 
   const handleViewDrill = async (activity: SessionActivity) => {
-    if (!activity.library_drill_id) return;
     setLoadingDrillId(activity.id);
     try {
-      const d = await fetchDrillById(activity.library_drill_id);
-      if (d) setSelectedDrill(d);
+      if (activity.library_drill_id) {
+        const d = await fetchDrillById(activity.library_drill_id);
+        if (d) setSelectedDrill(d);
+      } else if (activity.activity_type === 'custom_drill' && activity.custom_drill_id) {
+        const custom = await getCustomDrill(activity.custom_drill_id);
+        if (custom) setSelectedDrill(customDrillToDrill(custom));
+      }
     } catch {} finally { setLoadingDrillId(null); }
   };
 
