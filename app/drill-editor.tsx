@@ -165,6 +165,21 @@ export default function DrillEditorScreen() {
               if (dj.cones) newDiagram.cones = dj.cones.map((c, i) => ({ id: `cone-${i}`, position: c.position }));
               if (dj.balls) newDiagram.balls = dj.balls.map((b, i) => ({ id: `ball-${i}`, position: b.position }));
               if (dj.goals) newDiagram.goals = dj.goals.map((g, i) => ({ id: `goal-${i}`, position: g.position, rotation: g.rotation || 0, size: g.size === 'small' ? 'mini' : 'full' }));
+              if (dj.mini_goals) newDiagram.goals = [
+                ...(newDiagram.goals || []),
+                ...dj.mini_goals.map((g, i) => {
+                  const displayRot = g.rotation || 0;
+                  const storedRot = (displayRot + 180) % 360;
+                  const markings = dj.field?.markings ?? dj.field?.show_markings ?? true;
+                  const d = -(markings ? 2 * (3/4) : 2); // matches DrillDiagramView mgScale
+                  let { x, y } = g.position;
+                  if (displayRot === 0)        y = y + d;
+                  else if (displayRot === 90)  x = x + d;
+                  else if (displayRot === 180) y = y - d;
+                  else                         x = x - d;
+                  return { id: `minigoal-${i}`, position: { x, y }, rotation: storedRot, size: 'mini' as const };
+                }),
+              ];
               if (dj.cone_lines) newDiagram.coneLines = dj.cone_lines.map((l, i) => ({ id: `line-${i}`, fromConeId: `cone-${l.from_cone}`, toConeId: `cone-${l.to_cone}` }));
               if (dj.actions) {
                 newDiagram.actions = dj.actions.map((a, i) => {

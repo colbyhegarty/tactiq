@@ -1,5 +1,4 @@
-import { DiagramData } from '../types/customDrill';
-import { CustomDrill } from '../types/customDrill';
+import { CustomDrill, DiagramData } from '../types/customDrill';
 import { Drill, DrillJsonData } from '../types/drill';
 
 // Convert CustomDrill's DiagramData to DrillJsonData for DrillDiagramView
@@ -28,10 +27,18 @@ export function convertToDrillJson(diagram: DiagramData): DrillJsonData {
 
   const miniGoals = diagram.goals
     .filter(g => g.size === 'mini')
-    .map(g => ({
-      position: { x: g.position.x, y: g.position.y },
-      rotation: g.rotation,
-    }));
+    .map(g => {
+      const displayRot = (g.rotation + 180) % 360; // undo editor's +180 to get display rotation
+      const markings = diagram.field.markings;
+      const d = markings ? -1.5 : -2;
+      // convert back-anchor (editor) to front-anchor (diagram_json / DrillDiagramView)
+      let { x, y } = g.position;
+      if (displayRot === 0)        y = y - d;
+      else if (displayRot === 90)  x = x - d;
+      else if (displayRot === 180) y = y + d;
+      else                         x = x + d; // 270
+      return { position: { x, y }, rotation: displayRot };
+    });
 
   const coneIdToIndex: Record<string, number> = {};
   diagram.cones.forEach((c, i) => { coneIdToIndex[c.id] = i; });

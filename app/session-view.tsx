@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   ArrowLeft, Calendar,
   ChevronDown,
@@ -72,6 +72,13 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
   const touchStartX = useRef(0);
   const touchStartY = useRef(0);
   const [scrollEnabled, setScrollEnabled] = useState(true);
+  const [customDrillExists, setCustomDrillExists] = useState(true);
+
+  useEffect(() => {
+    if (activity.activity_type === 'custom_drill' && activity.custom_drill_id) {
+      getCustomDrill(activity.custom_drill_id).then(d => setCustomDrillExists(!!d));
+    }
+  }, [activity.custom_drill_id]);
 
   return (
     <View style={{ width: pageWidth }}
@@ -115,7 +122,7 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
             <Eye size={16} color={tc.primary} /><Text style={sm.viewDrillText}>{loadingDrillId === activity.id ? 'Loading...' : 'View Full Drill Details'}</Text>
           </TouchableOpacity>
         )}
-        {activity.activity_type === 'custom_drill' && activity.custom_drill_id && (
+        {activity.activity_type === 'custom_drill' && activity.custom_drill_id && customDrillExists && (
           <TouchableOpacity style={sm.viewDrillBtn} onPress={() => onViewDrill(activity)} disabled={loadingDrillId === activity.id}>
             <Eye size={16} color={tc.primary} /><Text style={sm.viewDrillText}>{loadingDrillId === activity.id ? 'Loading...' : 'View Full Drill Details'}</Text>
           </TouchableOpacity>
@@ -379,24 +386,25 @@ export default function SessionViewScreen() {
     setShareModalOpen(true);
   };
 
-  useEffect(() => {
-    if (params.id) {
+  useFocusEffect(
+    useCallback(() => {
+      if (!params.id) return;
       (async () => {
         const s = await getSession(params.id);
-        if (s) {
-          setSession(s);
-          s.activities.forEach(async (a) => {
-            if (a.library_drill_id) {
-              try {
-                const d = await fetchDrillById(a.library_drill_id);
-                if (d) setDrillDetails(prev => ({ ...prev, [a.library_drill_id!]: d }));
-              } catch {}
-            }
-          });
-        } else { router.back(); }
+        if (!s) { router.back(); return; }
+        setSession(s);
+        setDrillDetails({});
+        s.activities.forEach(async (a) => {
+          if (a.library_drill_id) {
+            try {
+              const d = await fetchDrillById(a.library_drill_id);
+              if (d) setDrillDetails(prev => ({ ...prev, [a.library_drill_id!]: d }));
+            } catch {}
+          }
+        });
       })();
-    }
-  }, [params.id]);
+    }, [params.id])
+  );
 
   // Load PDF settings from profile
   useEffect(() => {
@@ -414,7 +422,11 @@ export default function SessionViewScreen() {
         if (d) setSelectedDrill(d);
       } else if (activity.activity_type === 'custom_drill' && activity.custom_drill_id) {
         const custom = await getCustomDrill(activity.custom_drill_id);
-        if (custom) setSelectedDrill(customDrillToDrill(custom));
+        if (custom) {
+          setSelectedDrill(customDrillToDrill(custom));
+        } else {
+          Alert.alert('Drill Deleted', 'This drill has been deleted from your profile. The session data is still intact.');
+        }
       }
     } catch {} finally { setLoadingDrillId(null); }
   };

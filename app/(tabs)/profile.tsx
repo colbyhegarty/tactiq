@@ -82,9 +82,14 @@ export default function ProfileScreen() {
     ]);
     setProfile(p);
     setPdfSettings(p.pdfSettings || defaultPdfSettings);
-    setSavedDrills(saved);
-    setCustomDrills(custom);
-    setSessions(sess.sort((a, b) => b.updated_at.localeCompare(a.updated_at)));
+    setSavedDrills(saved.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || '')));
+    setCustomDrills(custom.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
+    setSessions(sess.sort((a, b) => {
+      if (!a.session_date && !b.session_date) return 0;
+      if (!a.session_date) return 1;
+      if (!b.session_date) return -1;
+      return b.session_date.localeCompare(a.session_date);
+    }));
     setContacts(cont);
   };
 
