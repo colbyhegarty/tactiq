@@ -323,7 +323,7 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
                       >
                         {drill.svg_url && (
                           <View style={ms.drillImg}>
-                            <Image source={{ uri: drill.svg_url + '?v=19' }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            <Image source={{ uri: drill.svg_url + '?v=20' }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                           </View>
                         )}
                         <View style={{ padding: spacing.sm }}>
@@ -413,7 +413,7 @@ function AddActivityModal({ visible, onClose, onAdd, editingActivity }: AddActiv
                       >
                         {drill.svg_url ? (
                           <View style={ms.drillImg}>
-                            <Image source={{ uri: drill.svg_url + '?v=19' }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                            <Image source={{ uri: drill.svg_url + '?v=20' }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
                           </View>
                         ) : (
                           <View style={[ms.drillImg, { justifyContent: 'center', alignItems: 'center' }]}>
@@ -523,7 +523,7 @@ function ActivityCard({ activity, index, startTime, onMoveUp, onMoveDown, onEdit
       </View>
       {activity.drill_svg_url && (
         <View style={ac.diagramWrap}>
-          <Image source={{ uri: activity.drill_svg_url + '?v=19' }} style={ac.diagram} contentFit="contain" />
+          <Image source={{ uri: activity.drill_svg_url + '?v=20' }} style={ac.diagram} contentFit="contain" />
         </View>
       )}
       {activity.activity_type === 'custom_drill' && !activity.drill_svg_url && activity.drill_diagram_data && (

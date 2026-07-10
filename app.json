@@ -11,9 +11,10 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.colbyhegarty.tactiq",
-      "buildNumber": "10",
+      "buildNumber": "12",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSUserTrackingUsageDescription": "We use this to show you more relevant ads and improve your experience."
       },
       "backgroundColor": "#151823"
     },
@@ -50,7 +51,20 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-mail-composer",
-      "expo-localization"
+      "expo-localization",
+      "expo-tracking-transparency",
+      [
+        "react-native-fbsdk-next",
+        {
+          "appID": "1001978885777751",
+          "clientToken": "8c38052fa52a5a5bec5d1716d8db6490",
+          "displayName": "Tactiq",
+          "scheme": "fb1001978885777751",
+          "advertiserIDCollectionEnabled": false,
+          "autoLogAppEventsEnabled": false,
+          "isAutoInitEnabled": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

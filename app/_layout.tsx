@@ -1,11 +1,14 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
+import * as TrackingTransparency from 'expo-tracking-transparency';
 import { useEffect } from 'react';
-import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
-import { SubscriptionProvider } from '../src/subscription/SubscriptionContext';
-import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle';
+import { Platform } from 'react-native';
+import { Settings } from 'react-native-fbsdk-next';
 import { initAnalytics } from '../src/lib/analytics';
 import { prefetchDrills } from '../src/lib/drillCache';
+import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle';
+import { SubscriptionProvider } from '../src/subscription/SubscriptionContext';
+import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -14,11 +17,24 @@ const MIN_SPLASH_MS = 1500;
 const splashStart = Date.now();
 const drillPrefetch = prefetchDrills();
 
+async function initMeta() {
+  try {
+    if (Platform.OS === 'ios') {
+      const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
+      await Settings.setAdvertiserTrackingEnabled(status === 'granted');
+    }
+    await Settings.initializeSDK();
+  } catch (e) {
+    // Fail silently — Meta SDK should never crash the app
+  }
+}
+
 function RootStack() {
   const { colors } = useTheme();
 
   useEffect(() => {
     initAnalytics();
+    initMeta();
 
     // Hide splash only after both the minimum duration AND the first drill
     // batch have resolved, so the user never sees the loading spinner.

@@ -1,65 +1,80 @@
-import { Tabs } from 'expo-router';
-import { PenTool, Library, CalendarDays, User } from 'lucide-react-native';
-import { useTheme } from '../../src/theme/ThemeContext';
+import { Stack } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import * as TrackingTransparency from 'expo-tracking-transparency';
+import { useEffect } from 'react';
+import { Platform } from 'react-native';
+import { Settings } from 'react-native-fbsdk-next';
+import { initAnalytics } from '../src/lib/analytics';
+import { prefetchDrills } from '../src/lib/drillCache';
+import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle';
+import { SubscriptionProvider } from '../src/subscription/SubscriptionContext';
+import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
 
-export default function TabLayout() {
+SplashScreen.preventAutoHideAsync();
+
+// Kick off the drill fetch immediately — before any component mounts.
+const MIN_SPLASH_MS = 1500;
+const splashStart = Date.now();
+const drillPrefetch = prefetchDrills();
+
+async function initMeta() {
+  try {
+    if (Platform.OS === 'ios') {
+      const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
+      await Settings.setAdvertiserTrackingEnabled(status === 'granted');
+    }
+    await Settings.initializeSDK();
+  } catch (e) {
+    // Fail silently — Meta SDK should never crash the app
+  }
+}
+
+function RootStack() {
   const { colors } = useTheme();
+
+  useEffect(() => {
+    initAnalytics();
+    initMeta();
+
+    // Hide splash only after both the minimum duration AND the first drill
+    // batch have resolved, so the user never sees the loading spinner.
+    const elapsed = Date.now() - splashStart;
+    const remaining = Math.max(0, MIN_SPLASH_MS - elapsed);
+
+    Promise.all([
+      drillPrefetch,
+      new Promise(resolve => setTimeout(resolve, remaining)),
+    ]).then(() => {
+      SplashScreen.hideAsync();
+    });
+  }, []);
+
   return (
-    <Tabs
-      screenOptions={{
-        headerShown: false,
-        tabBarStyle: {
-          backgroundColor: colors.card,
-          borderTopColor: colors.border,
-          borderTopWidth: 1,
-          height: 85,
-          paddingTop: 8,
-          paddingBottom: 28,
-        },
-        tabBarActiveTintColor: colors.primary,
-        tabBarInactiveTintColor: colors.mutedForeground,
-        tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '500',
-        },
-      }}
-    >
-      <Tabs.Screen
-        name="create"
-        options={{
-          title: 'Create',
-          tabBarIcon: ({ color, size }) => (
-            <PenTool size={22} color={color} />
-          ),
+    <>
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: colors.background },
+          sceneStyle: { backgroundColor: colors.background },
+          animation: 'slide_from_right',
         }}
-      />
-      <Tabs.Screen
-        name="index"
-        options={{
-          title: 'Library',
-          tabBarIcon: ({ color, size }) => (
-            <Library size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="sessions"
-        options={{
-          title: 'Sessions',
-          tabBarIcon: ({ color, size }) => (
-            <CalendarDays size={22} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          title: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <User size={22} color={color} />
-          ),
-        }}
-      />
-    </Tabs>
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="session-view" />
+        <Stack.Screen name="session-editor" />
+        <Stack.Screen name="drill-editor" />
+      </Stack>
+      <DevSubscriptionToggle />
+    </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <SubscriptionProvider>
+        <RootStack />
+      </SubscriptionProvider>
+    </ThemeProvider>
   );
 }

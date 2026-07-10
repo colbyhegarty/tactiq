@@ -25,8 +25,8 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
 import { generateActivityId, getSessions, saveSession, updateSession } from '../lib/sessionStorage';
 import { borderRadius, spacing } from '../theme/colors';
@@ -167,7 +167,7 @@ function AddToSessionModal({ visible, drill, onClose }: AddToSessionModalProps) 
               ) : (
                 <>
                   <Text style={s.sectionLabel}>EXISTING SESSIONS</Text>
-                  <ScrollView style={s.sessionList} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator={false}>
+                  <ScrollView style={s.sessionList} contentContainerStyle={{ paddingBottom: 8 }} showsVerticalScrollIndicator={true} bounces={false}>
                     {sessions.map(sess => (
                       <TouchableOpacity
                         key={sess.id}
@@ -230,7 +230,7 @@ function create_ats(tc: any, bottomInset: number = 0) { return StyleSheet.create
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: spacing.md, borderBottomWidth: 1, borderBottomColor: tc.border },
   title: { fontSize: 17, fontWeight: '600', color: tc.foreground },
   pickContainer: { paddingHorizontal: spacing.md, paddingTop: spacing.md, flex: 1 },
-  sessionList: { flex: 1 },
+  sessionList: { flex: 1, maxHeight: 320 },
   newStepBody: { paddingHorizontal: spacing.md, paddingTop: spacing.md },
   newSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, borderRadius: borderRadius.md, paddingVertical: 14, marginBottom: spacing.md },
   newSessionBtnText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
@@ -359,7 +359,7 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
                 />
               ) : drill.svg_url ? (
                 <View style={s.diagramContainer}>
-                  <Image source={{ uri: drill.svg_url + '?v=19' }} style={s.diagramImage} contentFit="contain" transition={200} />
+                  <Image source={{ uri: drill.svg_url + '?v=20' }} style={s.diagramImage} contentFit="contain" transition={200} />
                 </View>
               ) : (
                 <View style={s.diagramPlaceholder}><Text style={s.diagramPlaceholderText}>No diagram available</Text></View>
@@ -378,10 +378,30 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
             {hasAnyContent && (
               <View style={s.tabbedSection}>
                 <View style={s.tabsHeader}>
-                  {hasSetup && <TouchableOpacity style={[s.tab, activeTab === 'setup' && s.tabActive]} onPress={() => setActiveTab('setup')}><ClipboardList size={16} color={activeTab === 'setup' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
-                  {hasInstructions && <TouchableOpacity style={[s.tab, activeTab === 'instructions' && s.tabActive]} onPress={() => setActiveTab('instructions')}><Play size={16} color={activeTab === 'instructions' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
-                  {hasVariations && <TouchableOpacity style={[s.tab, activeTab === 'variations' && s.tabActive]} onPress={() => setActiveTab('variations')}><RefreshCw size={16} color={activeTab === 'variations' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
-                  {hasCoachingPoints && <TouchableOpacity style={[s.tab, activeTab === 'coaching' && s.tabActive]} onPress={() => setActiveTab('coaching')}><Lightbulb size={16} color={activeTab === 'coaching' ? tc.foreground : tc.mutedForeground} /></TouchableOpacity>}
+                  {hasSetup && (
+                    <TouchableOpacity style={[s.tab, activeTab === 'setup' && s.tabActive]} onPress={() => setActiveTab('setup')}>
+                      <ClipboardList size={16} color={activeTab === 'setup' ? tc.primary : tc.mutedForeground} />
+                      <Text style={[s.tabLabel, activeTab === 'setup' && s.tabLabelActive]}>Setup</Text>
+                    </TouchableOpacity>
+                  )}
+                  {hasInstructions && (
+                    <TouchableOpacity style={[s.tab, activeTab === 'instructions' && s.tabActive]} onPress={() => setActiveTab('instructions')}>
+                      <Play size={16} color={activeTab === 'instructions' ? tc.primary : tc.mutedForeground} />
+                      <Text style={[s.tabLabel, activeTab === 'instructions' && s.tabLabelActive]}>Steps</Text>
+                    </TouchableOpacity>
+                  )}
+                  {hasVariations && (
+                    <TouchableOpacity style={[s.tab, activeTab === 'variations' && s.tabActive]} onPress={() => setActiveTab('variations')}>
+                      <RefreshCw size={16} color={activeTab === 'variations' ? tc.primary : tc.mutedForeground} />
+                      <Text style={[s.tabLabel, activeTab === 'variations' && s.tabLabelActive]}>Variations</Text>
+                    </TouchableOpacity>
+                  )}
+                  {hasCoachingPoints && (
+                    <TouchableOpacity style={[s.tab, activeTab === 'coaching' && s.tabActive]} onPress={() => setActiveTab('coaching')}>
+                      <Lightbulb size={16} color={activeTab === 'coaching' ? tc.primary : tc.mutedForeground} />
+                      <Text style={[s.tabLabel, activeTab === 'coaching' && s.tabLabelActive]}>Tips</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <View style={s.tabContent}>{getTabContent()}</View>
               </View>
@@ -452,8 +472,10 @@ function create_s(tc: any) { return StyleSheet.create({
   overviewText: { fontSize: 14, lineHeight: 22, color: tc.mutedForeground },
   tabbedSection: { marginBottom: spacing.lg },
   tabsHeader: { flexDirection: 'row', backgroundColor: tc.card, borderRadius: borderRadius.md, padding: 4, marginBottom: spacing.md },
-  tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.sm },
-  tabActive: { backgroundColor: tc.background },
+  tab: { flex: 1, alignItems: 'center', paddingVertical: spacing.sm, borderRadius: borderRadius.sm, borderWidth: 1.5, borderColor: 'transparent' },
+  tabActive: { backgroundColor: tc.background, borderColor: tc.primary },
+  tabLabel: { fontSize: 10, marginTop: 3, color: tc.mutedForeground },
+  tabLabelActive: { color: tc.primary, fontWeight: '600' },
   tabContent: { backgroundColor: tc.card, borderRadius: borderRadius.lg, padding: spacing.md, borderWidth: 1, borderColor: tc.border },
   bulletItem: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.sm },
   bulletPoint: { color: tc.primary, fontSize: 12, marginTop: 2 },

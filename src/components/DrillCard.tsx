@@ -79,7 +79,7 @@ function DrillCardInner({
   }));
 
   const imageUri = useMemo(
-    () => (drill.svg_url ? `${drill.svg_url}?v=19` : null),
+    () => (drill.svg_url ? `${drill.svg_url}?v=20` : null),
     [drill.svg_url],
   );
 

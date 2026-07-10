@@ -14,7 +14,6 @@ import {
   View
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { fetchDrills } from '../../src/lib/api';
 import { awaitPrefetch } from '../../src/lib/drillCache';
 import { PaywallModal, usePaywallGate } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
@@ -129,7 +128,7 @@ export default function CreateScreen() {
                 <TouchableOpacity style={[s.pickerCard, { borderColor: colors.border, backgroundColor: colors.card }]} onPress={() => handleSelectDrill(item.id)} activeOpacity={0.7}>
                   <View style={s.pickerThumb}>
                     {item.svg_url ? (
-                      <Image source={{ uri: item.svg_url + '?v=19' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
+                      <Image source={{ uri: item.svg_url + '?v=20' }} style={{ width: '100%', height: '100%' }} contentFit="contain" />
                     ) : (
                       <Text style={{ color: colors.mutedForeground, fontSize: 10 }}>No preview</Text>
                     )}
