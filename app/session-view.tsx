@@ -112,7 +112,7 @@ function ActivityPage({ activity, startMin, drillData, onViewDrill, loadingDrill
         </View>
         {activity.description && !drillData && <Text style={sm.descText}>{activity.description}</Text>}
         {activity.drill_svg_url && (
-          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=20' }} style={sm.diagram} contentFit="contain" /></View>
+          <View style={sm.diagramWrap}><Image source={{ uri: activity.drill_svg_url + '?v=21' }} style={sm.diagram} contentFit="contain" /></View>
         )}
         {activity.activity_type === 'custom_drill' && !activity.drill_svg_url && activity.drill_diagram_data && (
           <View style={sm.diagramWrap}><DrillDiagramView drillJson={convertToDrillJson(activity.drill_diagram_data)} mode="static" targetAspectRatio={4/3} /></View>
@@ -526,7 +526,7 @@ export default function SessionViewScreen() {
                     </View>
                     {activity.description && !drillData && <Text style={v.actDesc}>{activity.description}</Text>}
                     {activity.drill_svg_url && (
-                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=20' }} style={{ width: '100%', height: '100%' }} contentFit="contain" /></View>
+                      <View style={v.actDiagram}><Image source={{ uri: activity.drill_svg_url + '?v=21' }} style={{ width: '100%', height: '100%' }} contentFit="contain" /></View>
                     )}
                     {activity.activity_type === 'custom_drill' && !activity.drill_svg_url && activity.drill_diagram_data && (
                       <View style={v.actDiagram}><DrillDiagramView drillJson={convertToDrillJson(activity.drill_diagram_data)} mode="static" targetAspectRatio={4/3} /></View>
