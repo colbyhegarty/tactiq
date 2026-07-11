@@ -60,8 +60,8 @@
           "clientToken": "8c38052fa52a5a5bec5d1716d8db6490",
           "displayName": "Tactiq",
           "scheme": "fb1001978885777751",
-          "advertiserIDCollectionEnabled": false,
-          "autoLogAppEventsEnabled": false,
+          "advertiserIDCollectionEnabled": true,
+          "autoLogAppEventsEnabled": true,
           "isAutoInitEnabled": true
         }
       ]
