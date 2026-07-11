@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as TrackingTransparency from 'expo-tracking-transparency';
 import { useEffect } from 'react';
-import { Platform } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import { Settings } from 'react-native-fbsdk-next';
 import { initAnalytics } from '../src/lib/analytics';
 import { prefetchDrills } from '../src/lib/drillCache';
@@ -20,30 +20,37 @@ const drillPrefetch = prefetchDrills();
 async function initMeta() {
   try {
     if (Platform.OS === 'ios') {
-      // Give the app a moment to finish launching
+      // Wait a moment after launch
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      console.log("Requesting ATT...");
+      Alert.alert("Meta Debug", "About to request ATT permission");
 
       const result =
         await TrackingTransparency.requestTrackingPermissionsAsync();
 
-      console.log("ATT Result:", result);
-
-      // Initialize the Meta SDK
-      Settings.initializeSDK();
-
-      // Tell Meta whether tracking was granted
-      await Settings.setAdvertiserTrackingEnabled(
-        result.status === "granted"
+      Alert.alert(
+        "ATT Result",
+        JSON.stringify(result, null, 2)
       );
 
-      console.log("Meta SDK initialized");
+      Settings.initializeSDK();
+
+      await Settings.setAdvertiserTrackingEnabled(
+        result.status === 'granted'
+      );
+
+      Alert.alert(
+        "Meta Debug",
+        `SDK initialized\nTracking: ${result.status === 'granted'}`
+      );
     } else {
       Settings.initializeSDK();
     }
-  } catch (e) {
-    console.error("Meta init failed:", e);
+  } catch (e: any) {
+    Alert.alert(
+      "Meta Error",
+      e?.message ?? JSON.stringify(e)
+    );
   }
 }
 
