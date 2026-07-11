@@ -20,12 +20,30 @@ const drillPrefetch = prefetchDrills();
 async function initMeta() {
   try {
     if (Platform.OS === 'ios') {
-      const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
-      await Settings.setAdvertiserTrackingEnabled(status === 'granted');
+      // Give the app a moment to finish launching
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      console.log("Requesting ATT...");
+
+      const result =
+        await TrackingTransparency.requestTrackingPermissionsAsync();
+
+      console.log("ATT Result:", result);
+
+      // Initialize the Meta SDK
+      Settings.initializeSDK();
+
+      // Tell Meta whether tracking was granted
+      await Settings.setAdvertiserTrackingEnabled(
+        result.status === "granted"
+      );
+
+      console.log("Meta SDK initialized");
+    } else {
+      Settings.initializeSDK();
     }
-    await Settings.initializeSDK();
   } catch (e) {
-    // Fail silently — Meta SDK should never crash the app
+    console.error("Meta init failed:", e);
   }
 }
 

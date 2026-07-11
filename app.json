@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.colbyhegarty.tactiq",
-      "buildNumber": "14",
+      "buildNumber": "15",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserTrackingUsageDescription": "We use this to show you more relevant ads and improve your experience."
@@ -62,7 +62,8 @@
           "scheme": "fb1001978885777751",
           "advertiserIDCollectionEnabled": true,
           "autoLogAppEventsEnabled": true,
-          "isAutoInitEnabled": true
+          "isAutoInitEnabled": true,
+          "iosUserTrackingPermission": "We use this to show you more relevant ads and improve your experience."
         }
       ]
     ],
