@@ -2,34 +2,35 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, ChevronDown, ChevronUp, Save, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    LayoutAnimation,
-    Modal,
-    Platform,
-    Pressable,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    UIManager,
-    View,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  LayoutAnimation,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  UIManager,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
-import { fetchDrillById, fetchFilterOptions, DIFFICULTIES } from '../src/lib/api';
+import { track, trackScreen } from '../src/lib/analytics';
+import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
 import { useTheme } from '../src/theme/ThemeContext';
 import {
-    CustomDrillFormData,
-    DiagramData,
-    EditorState, SelectedEntity,
+  CustomDrillFormData,
+  DiagramData,
+  EditorState, SelectedEntity,
 } from '../src/types/customDrill';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental)
@@ -105,6 +106,11 @@ export default function DrillEditorScreen() {
 
   // Load categories
   useEffect(() => { fetchFilterOptions().then(o => setCategories(o.categories)); }, []);
+
+  useEffect(() => {
+    trackScreen('DrillEditor');
+    track('drill_editor_opened', { mode: params.editId ? 'edit' : 'create' });
+  }, []);
 
   // Load existing drill or template
   useEffect(() => {
@@ -209,8 +215,12 @@ export default function DrillEditorScreen() {
 
   const handleSave = async () => {
     if (!formData.name.trim()) { Alert.alert('Name required', 'Enter a drill name before saving.'); return; }
-    if (existingId) { await updateCustomDrill(existingId, formData, diagram); }
-    else { const created = await saveCustomDrill(formData, diagram); setExistingId(created.id); }
+    if (existingId) { await updateCustomDrill(existingId, formData, diagram);
+      track('drill_updated', { drill_id: existingId, name: formData.name });
+     }
+    else { const created = await saveCustomDrill(formData, diagram); setExistingId(created.id);
+      track('drill_created', { field_type: diagram.field.type, name: formData.name });
+     }
     router.back();
   };
 

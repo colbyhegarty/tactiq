@@ -35,6 +35,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrillDiagramView } from '../src/components/DrillDiagramView';
+import { track } from '../src/lib/analytics';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
@@ -594,6 +595,11 @@ export default function SessionEditorScreen() {
       setEditingActivity(null);
     } else {
       setActivities(prev => [...prev, { ...activity, sort_order: prev.length }]);
+      const source = activity.activity_type === 'quick_activity' ? 'quick'
+        : activity.activity_type === 'custom_drill' ? 'custom'
+        : activity.library_drill_id && !activity.custom_drill_id ? 'library'
+        : 'saved';
+      track('drill_added_to_session', { drill_name: activity.drill_name || activity.title || 'Unknown', source });
     }
   };
 

@@ -30,8 +30,8 @@ import {
   mapLibraryDrillToDrill,
   warmUpBackend,
 } from '../../src/lib/api';
-import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
 import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillCache';
+import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
 import { PaywallModal, usePaywallGate, useSubscription } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -221,6 +221,7 @@ export default function LibraryScreen() {
     if (currentlySaved) {
       await removeDrill(drill.id);
       setSavedState((prev) => ({ ...prev, [drill.id]: false }));
+      track('drill_unfavorited', { drill_id: drill.id });
     } else {
       try {
         const response = await fetchLibraryDrill(drill.id);
@@ -247,6 +248,7 @@ export default function LibraryScreen() {
         await saveDrill(drill);
       }
       setSavedState((prev) => ({ ...prev, [drill.id]: true }));
+      track('drill_favorited', { drill_id: drill.id, drill_name: drill.name, category: drill.category });
     }
   }, [savedState]);
 

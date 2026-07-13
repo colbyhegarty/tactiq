@@ -2,7 +2,7 @@ import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import * as TrackingTransparency from 'expo-tracking-transparency';
 import { useEffect } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import { Settings } from 'react-native-fbsdk-next';
 import { initAnalytics } from '../src/lib/analytics';
 import { prefetchDrills } from '../src/lib/drillCache';
@@ -23,15 +23,8 @@ async function initMeta() {
       // Wait a moment after launch
       await new Promise(resolve => setTimeout(resolve, 1000));
 
-      Alert.alert("Meta Debug", "About to request ATT permission");
-
       const result =
         await TrackingTransparency.requestTrackingPermissionsAsync();
-
-      Alert.alert(
-        "ATT Result",
-        JSON.stringify(result, null, 2)
-      );
 
       Settings.initializeSDK();
 
@@ -39,18 +32,11 @@ async function initMeta() {
         result.status === 'granted'
       );
 
-      Alert.alert(
-        "Meta Debug",
-        `SDK initialized\nTracking: ${result.status === 'granted'}`
-      );
     } else {
       Settings.initializeSDK();
     }
-  } catch (e: any) {
-    Alert.alert(
-      "Meta Error",
-      e?.message ?? JSON.stringify(e)
-    );
+  } catch (e) {
+  // Fail silently — Meta SDK should never crash the app
   }
 }
 

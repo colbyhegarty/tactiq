@@ -54,16 +54,24 @@ type AnalyticsEvents = {
   drill_saved: { drill_id: string; drill_name: string };
   drill_unsaved: { drill_id: string };
   locked_drill_tapped: { drill_id: string; drill_name: string };
+  drill_favorited: { drill_id: string; drill_name: string; category?: string };
+  drill_unfavorited: { drill_id: string };
 
   // Sessions
   session_created: {};
   session_viewed: { session_id: string };
   session_exported_pdf: { session_id: string };
   session_shared: { session_id: string; method: 'email' | 'sms' | 'contacts' };
+  drill_added_to_session: { drill_name: string; source: 'library' | 'custom' | 'saved' | 'quick' };
+  session_mode_started: { session_id: string; activity_count: number };
+  session_mode_completed: { session_id: string; activity_count: number };
 
   // Custom drills
   custom_drill_created: { field_type: 'FULL' | 'HALF' };
   custom_drill_edited: { drill_id: string };
+  drill_editor_opened: { mode: 'create' | 'edit' };
+  drill_created: { field_type: 'FULL' | 'HALF'; name: string };
+  drill_updated: { drill_id: string; name: string };
 
   // Paywall & subscription
   paywall_shown: { trigger: string; reason?: string };

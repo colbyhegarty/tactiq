@@ -450,7 +450,10 @@ export default function SessionViewScreen() {
         </View>
         <View style={v.headerActions}>
           {session.activities.length > 0 && (
-            <TouchableOpacity style={v.startBtn} onPress={() => setSessionMode(true)}>
+            <TouchableOpacity style={v.startBtn} onPress={() => {
+              track('session_mode_started', { session_id: session.id, activity_count: session.activities.length });
+              setSessionMode(true);
+            }}>
               <Play size={14} color={tc.primaryForeground} fill={tc.primaryForeground} />
               <Text style={v.startBtnText}>Start</Text>
             </TouchableOpacity>
@@ -572,7 +575,10 @@ export default function SessionViewScreen() {
       </ScrollView>
 
       {sessionMode && (
-        <SessionMode session={session} drillDetails={drillDetails} onExit={() => setSessionMode(false)} onViewDrill={handleViewDrill} loadingDrillId={loadingDrillId} selectedDrill={selectedDrill} onCloseDrill={() => setSelectedDrill(null)} />
+        <SessionMode session={session} drillDetails={drillDetails} onExit={() => {
+          track('session_mode_completed', { session_id: session.id, activity_count: session.activities.length });
+          setSessionMode(false);
+        }} onViewDrill={handleViewDrill} loadingDrillId={loadingDrillId} selectedDrill={selectedDrill} onCloseDrill={() => setSelectedDrill(null)} />
       )}
 
       {!sessionMode && <DrillDetailModal drill={selectedDrill} isOpen={selectedDrill !== null} onClose={() => setSelectedDrill(null)} isSaved={false} onSave={() => {}} />}
