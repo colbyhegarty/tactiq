@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tactiq",
     "slug": "tactiq",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tactiq",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.colbyhegarty.tactiq",
-      "buildNumber": "17",
+      "buildNumber": "18",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserTrackingUsageDescription": "We use this to show you more relevant ads and improve your experience."
