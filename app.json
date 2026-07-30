@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.colbyhegarty.tactiq",
-      "buildNumber": "16",
+      "buildNumber": "17",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserTrackingUsageDescription": "We use this to show you more relevant ads and improve your experience."
@@ -56,12 +56,12 @@
       [
         "react-native-fbsdk-next",
         {
-          "appID": "1001978885777751",
-          "clientToken": "8c38052fa52a5a5bec5d1716d8db6490",
+          "appID": "1522396032189835",
+          "clientToken": "c52f3aee9187fb655bd067776405a6de",
           "displayName": "Tactiq",
-          "scheme": "fb1001978885777751",
+          "scheme": "fb1522396032189835",
           "advertiserIDCollectionEnabled": true,
-          "autoLogAppEventsEnabled": true,
+          "autoLogAppEventsEnabled": false,
           "isAutoInitEnabled": true,
           "iosUserTrackingPermission": "We use this to show you more relevant ads and improve your experience."
         }

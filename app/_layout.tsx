@@ -3,7 +3,8 @@ import * as SplashScreen from 'expo-splash-screen';
 import * as TrackingTransparency from 'expo-tracking-transparency';
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { Settings } from 'react-native-fbsdk-next';
+import { AppEventsLogger, Settings } from 'react-native-fbsdk-next';
+import Purchases from 'react-native-purchases';
 import { initAnalytics } from '../src/lib/analytics';
 import { prefetchDrills } from '../src/lib/drillCache';
 import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle';
@@ -19,24 +20,28 @@ const drillPrefetch = prefetchDrills();
 
 async function initMeta() {
   try {
+    // Initialize SDK and set initial device identifiers before ATT prompt
+    await Settings.initializeSDK();
+    await Purchases.collectDeviceIdentifiers();
+    const fbAnonId = await AppEventsLogger.getAnonymousID();
+    if (fbAnonId) {
+      await Purchases.setFBAnonymousID(fbAnonId);
+    }
+
     if (Platform.OS === 'ios') {
-      // Wait a moment after launch
       await new Promise(resolve => setTimeout(resolve, 1000));
+      const { status } = await TrackingTransparency.requestTrackingPermissionsAsync();
+      await Settings.setAdvertiserTrackingEnabled(status === 'granted');
 
-      const result =
-        await TrackingTransparency.requestTrackingPermissionsAsync();
-
-      Settings.initializeSDK();
-
-      await Settings.setAdvertiserTrackingEnabled(
-        result.status === 'granted'
-      );
-
-    } else {
-      Settings.initializeSDK();
+      // Collect again after ATT response so IDFA is included if allowed
+      await Purchases.collectDeviceIdentifiers();
+      const fbAnonIdAfterATT = await AppEventsLogger.getAnonymousID();
+      if (fbAnonIdAfterATT) {
+        await Purchases.setFBAnonymousID(fbAnonIdAfterATT);
+      }
     }
   } catch (e) {
-  // Fail silently — Meta SDK should never crash the app
+    console.error('[Meta] SDK initialization failed:', e);
   }
 }
 
