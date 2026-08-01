@@ -1,9 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
-import Purchases, { CustomerInfo, LOG_LEVEL, PurchasesPackage } from 'react-native-purchases';
+import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 import { setUserProperties, track } from '../lib/analytics';
 import { getCustomDrills } from '../lib/customDrillStorage';
+import {
+  ensurePurchasesConfigured,
+  syncMetaAttributionToRevenueCat,
+} from '../lib/metaAttribution';
 import { getSessions } from '../lib/sessionStorage';
 import {
   EntitlementCheckResult,
@@ -16,7 +20,6 @@ import {
 import { isDrillFree } from './freeDrillConfig';
 
 // ── RevenueCat Config ──────────────────────────────────────────────
-const REVENUECAT_API_KEY = 'appl_agPpQSTiiyCOlhqYogvPgOwegZw';
 const PRO_ENTITLEMENT_ID = 'pro';
 
 // ── Storage Key ────────────────────────────────────────────────────
@@ -74,13 +77,9 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         }
       } catch {}
 
-      // Initialize RevenueCat
+      // Initialize RevenueCat (shared configure — Meta attribution depends on this)
       try {
-        if (__DEV__) {
-          Purchases.setLogLevel(LOG_LEVEL.DEBUG);
-        }
-
-        Purchases.configure({ apiKey: REVENUECAT_API_KEY });
+        await ensurePurchasesConfigured();
 
         // Check current entitlements
         const customerInfo = await Purchases.getCustomerInfo();
@@ -179,6 +178,13 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       track('purchase_started', { plan: period });
 
       try {
+        // Re-sync Meta/device IDs right before purchase so StartTrial/Subscribe can deliver.
+        try {
+          await syncMetaAttributionToRevenueCat();
+        } catch (attrErr) {
+          if (__DEV__) console.warn('[RevenueCat] Pre-purchase attribution sync failed:', attrErr);
+        }
+
         const offerings = await Purchases.getOfferings();
         const currentOffering = offerings.current;
 
