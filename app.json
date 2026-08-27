@@ -56,12 +56,12 @@
       [
         "react-native-fbsdk-next",
         {
-          "appID": "1522396032189835",
-          "clientToken": "c52f3aee9187fb655bd067776405a6de",
+          "appID": "1001978885777751",
+          "clientToken": "8c38052fa52a5a5bec5d1716d8db6490",
           "displayName": "Tactiq",
-          "scheme": "fb1522396032189835",
+          "scheme": "fb1001978885777751",
           "advertiserIDCollectionEnabled": true,
-          "autoLogAppEventsEnabled": false,
+          "autoLogAppEventsEnabled": true,
           "isAutoInitEnabled": true,
           "iosUserTrackingPermission": "We use this to show you more relevant ads and improve your experience."
         }
