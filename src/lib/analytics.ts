@@ -33,7 +33,7 @@ export async function initAnalytics(): Promise<void> {
   try {
     posthog = new PostHog(POSTHOG_API_KEY, {
       host: POSTHOG_HOST,
-      captureNativeAppLifecycleEvents: true,
+      captureAppLifecycleEvents: true,
     });
     if (__DEV__) console.log('[Analytics] PostHog initialized');
   } catch (err) {
