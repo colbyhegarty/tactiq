@@ -1,7 +1,22 @@
 import * as TrackingTransparency from 'expo-tracking-transparency';
 import { AppState, Platform } from 'react-native';
-import { AppEventsLogger, Settings } from 'react-native-fbsdk-next';
 import Purchases, { LOG_LEVEL } from 'react-native-purchases';
+
+// ── Expo Go safety ────────────────────────────────────────────────
+// react-native-fbsdk-next is a native module that crashes Expo Go on
+// import. We lazy-load it and no-op when it's unavailable.
+let AppEventsLogger: any = null;
+let Settings: any = null;
+let _fbsdkAvailable = false;
+
+try {
+  const fbsdk = require('react-native-fbsdk-next');
+  AppEventsLogger = fbsdk.AppEventsLogger;
+  Settings = fbsdk.Settings;
+  _fbsdkAvailable = true;
+} catch {
+  if (__DEV__) console.log('[Meta] react-native-fbsdk-next not available (Expo Go?)');
+}
 
 // Keep this in one place so Meta attribution always runs after configure.
 const REVENUECAT_API_KEY = 'appl_agPpQSTiiyCOlhqYogvPgOwegZw';
@@ -53,12 +68,16 @@ export async function syncMetaAttributionToRevenueCat(
 
   await Purchases.collectDeviceIdentifiers();
 
-  const fbAnonId = await AppEventsLogger.getAnonymousID();
-  if (fbAnonId) {
-    await Purchases.setFBAnonymousID(fbAnonId);
-    if (__DEV__) console.log('[Meta] setFBAnonymousID', fbAnonId);
+  if (_fbsdkAvailable && AppEventsLogger) {
+    const fbAnonId = await AppEventsLogger.getAnonymousID();
+    if (fbAnonId) {
+      await Purchases.setFBAnonymousID(fbAnonId);
+      if (__DEV__) console.log('[Meta] setFBAnonymousID', fbAnonId);
+    } else if (__DEV__) {
+      console.warn('[Meta] AppEventsLogger.getAnonymousID() returned empty');
+    }
   } else if (__DEV__) {
-    console.warn('[Meta] AppEventsLogger.getAnonymousID() returned empty');
+    console.log('[Meta] Skipping FB anonymous ID (SDK not available)');
   }
 
   if (attStatus) {
@@ -141,6 +160,12 @@ export function initMetaAttribution(): Promise<void> {
     try {
       // Configure RC first — this was a prior bug: IDs were set before configure.
       await ensurePurchasesConfigured();
+
+      // If FBSDK is not available (Expo Go), skip Meta attribution entirely
+      if (!_fbsdkAvailable || !Settings) {
+        if (__DEV__) console.log('[Meta] Skipping SDK init (native module not available)');
+        return;
+      }
 
       let attConsent: AttStatus = 'notDetermined';
 
