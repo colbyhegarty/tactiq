@@ -1,9 +1,11 @@
+import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
 import { initAnalytics } from '../src/lib/analytics';
 import { prefetchDrills } from '../src/lib/drillCache';
 import { initMetaAttribution } from '../src/lib/metaAttribution';
+import { OnboardingFlow, OnboardingProvider, useOnboarding } from '../src/onboarding';
 import { DevSubscriptionToggle } from '../src/subscription/DevSubscriptionToggle';
 import { SubscriptionProvider } from '../src/subscription/SubscriptionContext';
 import { ThemeProvider, useTheme } from '../src/theme/ThemeContext';
@@ -17,6 +19,8 @@ const drillPrefetch = prefetchDrills();
 
 function RootStack() {
   const { colors } = useTheme();
+  const { isLoaded: onboardingLoaded, hasCompletedOnboarding, selectedGoal } = useOnboarding();
+  const router = useRouter();
 
   useEffect(() => {
     initAnalytics();
@@ -36,6 +40,32 @@ function RootStack() {
     });
   }, []);
 
+  // After onboarding completes, navigate to the right tab based on goal
+  useEffect(() => {
+    if (!onboardingLoaded || !hasCompletedOnboarding || !selectedGoal) return;
+
+    // Small delay to let the modal dismiss
+    const timer = setTimeout(() => {
+      switch (selectedGoal) {
+        case 'build_practice':
+          router.replace('/sessions');
+          break;
+        case 'find_drills':
+          router.replace('/');
+          break;
+        case 'create_drill':
+          router.replace('/create');
+          break;
+        case 'explore':
+        default:
+          // Stay on default tab (Library)
+          break;
+      }
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [onboardingLoaded, hasCompletedOnboarding, selectedGoal]);
+
   return (
     <>
       <Stack
@@ -51,6 +81,12 @@ function RootStack() {
         <Stack.Screen name="session-editor" />
         <Stack.Screen name="drill-editor" />
       </Stack>
+
+      {/* Onboarding — shown on first launch */}
+      {onboardingLoaded && (
+        <OnboardingFlow visible={!hasCompletedOnboarding} />
+      )}
+
       <DevSubscriptionToggle />
     </>
   );
@@ -60,7 +96,9 @@ export default function RootLayout() {
   return (
     <ThemeProvider>
       <SubscriptionProvider>
-        <RootStack />
+        <OnboardingProvider>
+          <RootStack />
+        </OnboardingProvider>
       </SubscriptionProvider>
     </ThemeProvider>
   );

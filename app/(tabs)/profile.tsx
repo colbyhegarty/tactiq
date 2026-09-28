@@ -45,7 +45,8 @@ import { customDrillToDrill } from '../../src/lib/drillConverter';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
 import { clearAllData, getSavedDrills, getUserProfile, removeDrill, saveUserProfile } from '../../src/lib/storage';
 import { useTheme } from '../../src/theme/ThemeContext';
-import { PlanStatusCard, PaywallModal } from '../../src/subscription';
+import { useOnboarding } from '../../src/onboarding';
+import { PlanStatusCard, PaywallModal, useSubscription } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { CustomDrill } from '../../src/types/customDrill';
 import { defaultPdfSettings, Drill, PdfSettings, UserProfile } from '../../src/types/drill';
@@ -56,6 +57,7 @@ type ProfileTab = 'custom' | 'saved' | 'sessions';
 export default function ProfileScreen() {
   const router = useRouter();
   const { colors, isDark, toggleTheme } = useTheme();
+  const { resetOnboarding } = useOnboarding();
   const [profile, setProfile] = useState<UserProfile>({
     name: '', email: '', teamName: '',
     defaultAgeGroup: 'Not Specified', defaultSkillLevel: 'Not Specified', defaultPlayerCount: 12,
@@ -73,6 +75,7 @@ export default function ProfileScreen() {
   const [pdfSettings, setPdfSettings] = useState<PdfSettings>(defaultPdfSettings);
   const [showCameraIcon, setShowCameraIcon] = useState(false);
   const [showPaywall, setShowPaywall] = useState(false);
+  const { __devResetPreview } = useSubscription();
 
   useFocusEffect(useCallback(() => { loadData(); }, []));
 
@@ -471,6 +474,24 @@ export default function ProfileScreen() {
             <View style={[ps.contactsDivider, { backgroundColor: colors.border }]} />
             <ContactsManager contacts={contacts} onContactsChange={setContacts} parentScrollRef={settingsScrollRef} />
 
+            {__DEV__ && (
+              <View style={[ps.devSection, { borderColor: colors.border }]}>
+                <Text style={[ps.devSectionTitle, { color: colors.mutedForeground }]}>Dev Tools</Text>
+                <TouchableOpacity
+                  style={[ps.devButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => { resetOnboarding(); Alert.alert('Done', 'Onboarding reset. Restart the app to see it.'); }}
+                >
+                  <Text style={[ps.devButtonText, { color: colors.foreground }]}>Reset Onboarding</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[ps.devButton, { backgroundColor: colors.card, borderColor: colors.border }]}
+                  onPress={() => { __devResetPreview(); Alert.alert('Done', 'Pro drill preview reset to 5 views.'); }}
+                >
+                  <Text style={[ps.devButtonText, { color: colors.foreground }]}>Reset Pro Preview</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             <TouchableOpacity style={ps.clearDataButton} onPress={handleClearAllData}>
               <Text style={ps.clearDataText}>Clear All Data</Text>
             </TouchableOpacity>
@@ -575,4 +596,9 @@ const ps = StyleSheet.create({
   themeToggleRow: { flexDirection: 'row', gap: spacing.sm },
   themeOption: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1.5 },
   themeOptionText: { fontSize: 14, fontWeight: '600' },
+  // Dev tools
+  devSection: { borderWidth: 1, borderStyle: 'dashed', borderRadius: borderRadius.md, padding: spacing.md, gap: spacing.sm },
+  devSectionTitle: { fontSize: 11, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
+  devButton: { borderRadius: borderRadius.md, borderWidth: 1, paddingVertical: 10, paddingHorizontal: spacing.md, alignItems: 'center' },
+  devButtonText: { fontSize: 13, fontWeight: '500' },
 });

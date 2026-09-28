@@ -18,6 +18,15 @@ import {
   SubscriptionTier
 } from '../types/subscription';
 import { isDrillFree } from './freeDrillConfig';
+import {
+  canPreviewDrill,
+  consumePreviewView,
+  getPreviewRemaining,
+  getPreviewState,
+  MAX_PREVIEW_VIEWS,
+  ProPreviewState,
+  resetPreviewState,
+} from './proPreview';
 
 // ── RevenueCat Config ──────────────────────────────────────────────
 const PRO_ENTITLEMENT_ID = 'pro';
@@ -38,21 +47,42 @@ interface SubscriptionContextType {
   isLoaded: boolean;
   checkEntitlement: (feature: GatedFeature) => Promise<EntitlementCheckResult>;
   isDrillUnlocked: (drillId: string) => boolean;
+  /** Try to preview a Pro drill. Returns true if preview granted. */
+  tryPreviewDrill: (drillId: string) => Promise<{
+    allowed: boolean;
+    remaining: number;
+    justExhausted: boolean;
+  }>;
+  /** Current preview state for UI display */
+  previewState: ProPreviewState;
+  /** Remaining preview count */
+  previewRemaining: number;
   purchase: (period: SubscriptionPeriod) => Promise<boolean>;
   restore: () => Promise<boolean>;
   markOnboardingPaywallSeen: () => void;
   __devToggleTier: () => void;
+  __devResetPreview: () => void;
 }
+
+const defaultPreviewState: ProPreviewState = {
+  viewedDrillIds: [],
+  exhausted: false,
+  firstPreviewAt: null,
+};
 
 const SubscriptionContext = createContext<SubscriptionContextType>({
   subscription: defaultState,
   isLoaded: false,
   checkEntitlement: async () => ({ allowed: true }),
   isDrillUnlocked: () => true,
+  tryPreviewDrill: async () => ({ allowed: false, remaining: 0, justExhausted: false }),
+  previewState: defaultPreviewState,
+  previewRemaining: MAX_PREVIEW_VIEWS,
   purchase: async () => false,
   restore: async () => false,
   markOnboardingPaywallSeen: () => {},
   __devToggleTier: () => {},
+  __devResetPreview: () => {},
 });
 
 // ── Helper: extract tier from RevenueCat CustomerInfo ──────────────
@@ -66,6 +96,7 @@ function tierFromCustomerInfo(info: CustomerInfo): { tier: SubscriptionTier; isP
 export function SubscriptionProvider({ children }: { children: React.ReactNode }) {
   const [subscription, setSubscription] = useState<SubscriptionState>(defaultState);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [previewState, setPreviewState] = useState<ProPreviewState>(defaultPreviewState);
 
   useEffect(() => {
     async function init() {
@@ -75,6 +106,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         if (stored) {
           setSubscription((prev) => ({ ...prev, ...JSON.parse(stored) }));
         }
+      } catch {}
+
+      // Load preview state
+      try {
+        const preview = await getPreviewState();
+        setPreviewState(preview);
       } catch {}
 
       // Initialize RevenueCat (shared configure — Meta attribution depends on this)
@@ -107,12 +144,59 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
   }, []);
 
   // ── Drill Access ───────────────────────────────────────────────
+  // Note: isDrillUnlocked only checks free config, NOT preview.
+  // For preview, the caller must use tryPreviewDrill() separately.
+  // This keeps the existing behavior where locked drills show blur/overlay.
   const isDrillUnlocked = useCallback(
     (drillId: string): boolean => {
       if (subscription.isProUser) return true;
-      return isDrillFree(drillId);
+      if (isDrillFree(drillId)) return true;
+      // During preview period, drills that have been previewed are "soft unlocked"
+      if (!previewState.exhausted && previewState.viewedDrillIds.includes(drillId)) return true;
+      // If preview is still available (not exhausted), Pro drills show as unlockable
+      // but we don't auto-unlock them — user taps to consume a preview
+      return false;
     },
-    [subscription.isProUser],
+    [subscription.isProUser, previewState],
+  );
+
+  // ── Preview System ────────────────────────────────────────────
+  const tryPreviewDrill = useCallback(
+    async (drillId: string): Promise<{
+      allowed: boolean;
+      remaining: number;
+      justExhausted: boolean;
+    }> => {
+      if (subscription.isProUser) {
+        return { allowed: true, remaining: MAX_PREVIEW_VIEWS, justExhausted: false };
+      }
+
+      if (isDrillFree(drillId)) {
+        return { allowed: true, remaining: getPreviewRemaining(previewState), justExhausted: false };
+      }
+
+      // Check if can preview
+      const canPreview = await canPreviewDrill(drillId);
+      if (!canPreview) {
+        return {
+          allowed: false,
+          remaining: 0,
+          justExhausted: false,
+        };
+      }
+
+      // Consume a preview view
+      const result = await consumePreviewView(drillId);
+      // Update local state
+      setPreviewState(result.state);
+
+      return {
+        allowed: true,
+        remaining: result.remaining,
+        justExhausted: result.justExhausted,
+      };
+    },
+    [subscription.isProUser, previewState],
   );
 
   // ── Entitlement Checks ─────────────────────────────────────────
@@ -160,16 +244,26 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
           };
 
         case 'view_locked_drill':
+          // Check if preview is available
+          if (!previewState.exhausted) {
+            const remaining = getPreviewRemaining(previewState);
+            if (remaining > 0) {
+              return {
+                allowed: false,
+                reason: `You have ${remaining} free Pro drill preview${remaining === 1 ? '' : 's'} remaining. Tap to preview this drill.`,
+              };
+            }
+          }
           return {
             allowed: false,
-            reason: 'This drill is only available with Pro. Upgrade to unlock the full drill library.',
+            reason: 'You\'ve used all your free Pro drill previews. Upgrade to unlock the full drill library.',
           };
 
         default:
           return { allowed: true };
       }
     },
-    [subscription.isProUser],
+    [subscription.isProUser, previewState],
   );
 
   // ── Purchase via RevenueCat ────────────────────────────────────
@@ -264,6 +358,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     });
   }, [subscription.isProUser, updateState]);
 
+  const __devResetPreview = useCallback(async () => {
+    await resetPreviewState();
+    setPreviewState(defaultPreviewState);
+    if (__DEV__) console.log('[Preview] Reset to default state');
+  }, []);
+
   return (
     <SubscriptionContext.Provider
       value={{
@@ -271,10 +371,14 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
         isLoaded,
         checkEntitlement,
         isDrillUnlocked,
+        tryPreviewDrill,
+        previewState,
+        previewRemaining: getPreviewRemaining(previewState),
         purchase,
         restore,
         markOnboardingPaywallSeen,
         __devToggleTier,
+        __devResetPreview,
       }}
     >
       {children}

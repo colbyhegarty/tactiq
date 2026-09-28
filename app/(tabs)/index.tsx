@@ -32,7 +32,8 @@ import {
 } from '../../src/lib/api';
 import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillCache';
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
-import { PaywallModal, usePaywallGate, useSubscription } from '../../src/subscription';
+import { PaywallModal, PreviewBanner, usePaywallGate, useSubscription } from '../../src/subscription';
+import { MAX_PREVIEW_VIEWS } from '../../src/subscription/proPreview';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -43,8 +44,10 @@ export default function LibraryScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
   const styles = useMemo(() => create_styles(tc), [tc]);
-  const { isDrillUnlocked } = useSubscription();
+  const { isDrillUnlocked, tryPreviewDrill, previewRemaining, previewState } = useSubscription();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
+  const [showPreviewBanner, setShowPreviewBanner] = useState(false);
+  const [previewBannerRemaining, setPreviewBannerRemaining] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
   const [ageGroups, setAgeGroups] = useState<string[]>([]);
   const durations = ['10 min.', '15 min.', '20 min.', '30 min.'];
@@ -181,13 +184,13 @@ export default function LibraryScreen() {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: false });
   }, []);
 
-  const handleViewDrill = useCallback(async (drill: Drill) => {
-    if (!isDrillUnlocked(drill.id)) {
-      track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
-      await gate('view_locked_drill');
-      return;
-    }
-    track('drill_viewed', { drill_id: drill.id, drill_name: drill.name, category: drill.category });
+  const loadAndShowDrill = useCallback(async (drill: Drill, isPreview: boolean = false) => {
+    track('drill_viewed', {
+      drill_id: drill.id,
+      drill_name: drill.name,
+      category: drill.category,
+      is_preview: isPreview,
+    } as any);
     setIsLoadingDrill(true);
     try {
       const response = await fetchLibraryDrill(drill.id);
@@ -214,7 +217,39 @@ export default function LibraryScreen() {
     } finally {
       setIsLoadingDrill(false);
     }
-  }, [isDrillUnlocked, gate]);
+  }, []);
+
+  const handleViewDrill = useCallback(async (drill: Drill) => {
+    // Drill is already unlocked (free drill, pro user, or already previewed)
+    if (isDrillUnlocked(drill.id)) {
+      await loadAndShowDrill(drill);
+      return;
+    }
+
+    // Locked drill tapped — try preview first
+    track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
+
+    const previewResult = await tryPreviewDrill(drill.id);
+
+    if (previewResult.allowed) {
+      // Preview granted — show remaining count briefly
+      setPreviewBannerRemaining(previewResult.remaining);
+      setShowPreviewBanner(true);
+      setTimeout(() => setShowPreviewBanner(false), 3000);
+
+      // Open the drill
+      await loadAndShowDrill(drill, true);
+
+      // If this was the last preview, show paywall after they close the drill
+      if (previewResult.justExhausted) {
+        // The paywall will show on next locked drill tap
+      }
+      return;
+    }
+
+    // Preview exhausted — show paywall
+    await gate('view_locked_drill');
+  }, [isDrillUnlocked, tryPreviewDrill, gate, loadAndShowDrill]);
 
   const handleSaveDrill = useCallback(async (drill: Drill) => {
     const currentlySaved = savedState[drill.id] ?? (await isDrillSaved(drill.id));
@@ -294,19 +329,22 @@ export default function LibraryScreen() {
     );
   }, [isLoading, error, filters, loadDrills, styles, tc]);
 
-  const renderItem = useCallback(({ item }: { item: Drill }) => (
-    <View style={gridCols === 2 ? styles.gridItem : undefined}>
-      <DrillCard
-        drill={item}
-        onPress={handleViewDrill}
-        onSave={handleSaveDrill}
-        isSaved={isDrillCurrentlySaved(item.id)}
-        compact={gridCols === 2}
-        onQuickView={isDrillUnlocked(item.id) ? setQuickPreviewDrill : undefined}
-        isLocked={!isDrillUnlocked(item.id)}
-      />
-    </View>
-  ), [gridCols, handleViewDrill, handleSaveDrill, isDrillCurrentlySaved, isDrillUnlocked, styles]);
+  const renderItem = useCallback(({ item }: { item: Drill }) => {
+    const unlocked = isDrillUnlocked(item.id);
+    return (
+      <View style={gridCols === 2 ? styles.gridItem : undefined}>
+        <DrillCard
+          drill={item}
+          onPress={handleViewDrill}
+          onSave={handleSaveDrill}
+          isSaved={isDrillCurrentlySaved(item.id)}
+          compact={gridCols === 2}
+          onQuickView={unlocked ? setQuickPreviewDrill : undefined}
+          isLocked={!unlocked}
+        />
+      </View>
+    );
+  }, [gridCols, handleViewDrill, handleSaveDrill, isDrillCurrentlySaved, isDrillUnlocked, styles]);
 
   const renderFooter = useCallback(() => {
     if (isLoading || allDrills.length === 0) return null;
@@ -413,6 +451,16 @@ export default function LibraryScreen() {
           </View>
         </View>
       </View>
+
+      {/* Preview remaining banner */}
+      {showPreviewBanner && (
+        <PreviewBanner remaining={previewBannerRemaining} total={MAX_PREVIEW_VIEWS} />
+      )}
+
+      {/* Preview status hint — show when previews are available but some used */}
+      {!previewState.exhausted && previewState.viewedDrillIds.length > 0 && !showPreviewBanner && (
+        <PreviewBanner remaining={previewRemaining} total={MAX_PREVIEW_VIEWS} />
+      )}
 
       <FlatList
         ref={flatListRef}

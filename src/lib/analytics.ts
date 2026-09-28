@@ -50,7 +50,7 @@ type AnalyticsEvents = {
   screen_viewed: { screen: string };
 
   // Drill library
-  drill_viewed: { drill_id: string; drill_name: string; category?: string };
+  drill_viewed: { drill_id: string; drill_name: string; category?: string; is_preview?: boolean };
   drill_saved: { drill_id: string; drill_name: string };
   drill_unsaved: { drill_id: string };
   locked_drill_tapped: { drill_id: string; drill_name: string };
@@ -88,6 +88,12 @@ type AnalyticsEvents = {
   onboarding_completed: {};
   onboarding_skipped: { step: number };
   onboarding_reset: {};
+  onboarding_goal_selected: { goal: string };
+
+  // Pro drill preview
+  pro_drill_preview_started: {};
+  pro_drill_preview_viewed: { drill_id: string; preview_number: number; remaining: number };
+  pro_drill_preview_exhausted: { total_previewed: number };
 
   // Settings
   theme_toggled: { theme: 'light' | 'dark' };

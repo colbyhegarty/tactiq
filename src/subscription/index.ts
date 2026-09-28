@@ -5,3 +5,12 @@ export { ProBadge, PlanStatusCard } from './ProBadge';
 export { LockedDrillOverlay, LockIcon } from './LockedDrillOverlay';
 export { DevSubscriptionToggle } from './DevSubscriptionToggle';
 export { isDrillFree, FREE_DRILL_IDS, getFreeDrillCount } from './freeDrillConfig';
+export { PreviewBanner } from './PreviewBanner';
+export {
+  MAX_PREVIEW_VIEWS,
+  getPreviewState,
+  canPreviewDrill,
+  consumePreviewView,
+  resetPreviewState,
+} from './proPreview';
+export type { ProPreviewState } from './proPreview';

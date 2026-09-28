@@ -21,10 +21,12 @@ import {
   Share2,
   PenTool,
 } from 'lucide-react-native';
+import { track } from '../lib/analytics';
 import { useTheme } from '../theme/ThemeContext';
 import { borderRadius, spacing } from '../theme/colors';
 import { PRODUCTS, SubscriptionPeriod } from '../types/subscription';
 import { useSubscription } from './SubscriptionContext';
+import { MAX_PREVIEW_VIEWS } from './proPreview';
 
 interface PaywallModalProps {
   visible: boolean;
@@ -43,7 +45,7 @@ const PRO_FEATURES = [
 
 export function PaywallModal({ visible, onDismiss, reason }: PaywallModalProps) {
   const { colors } = useTheme();
-  const { purchase, restore } = useSubscription();
+  const { purchase, restore, previewState } = useSubscription();
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPeriod>('annual');
   const [isPurchasing, setIsPurchasing] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
@@ -86,7 +88,9 @@ export function PaywallModal({ visible, onDismiss, reason }: PaywallModalProps) 
             </View>
             <Text style={[s.title, { color: colors.foreground }]}>Go Pro</Text>
             <Text style={[s.subtitle, { color: colors.mutedForeground }]}>
-              Unlock everything Tactiq has to offer
+              {previewState.exhausted
+                ? `You've previewed ${MAX_PREVIEW_VIEWS} Pro drills — upgrade to keep exploring the full library`
+                : 'Unlock everything Tactiq has to offer'}
             </Text>
           </View>
 
