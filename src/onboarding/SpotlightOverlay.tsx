@@ -144,7 +144,7 @@ export function SpotlightOverlay({
       : hl.y + hl.h + 12
     : screen.height / 2 - 60;
 
-  const bgColor = celebrate ? colors.primary : colors.primaryLight;
+  const bgColor = celebrate ? colors.primary : colors.card;
   const borderColor = colors.primary;
   const textColor = celebrate ? colors.primaryForeground : colors.foreground;
   const subTextColor = celebrate
@@ -308,6 +308,75 @@ export function SpotlightOverlay({
     </Modal>
   );
 }
+
+/**
+ * A non-modal inline tip that renders inside a section body.
+ * Does NOT darken the screen — the user can still interact with everything.
+ */
+export function InlineTip({
+  visible,
+  heading,
+  message,
+  onDismiss,
+}: {
+  visible: boolean;
+  heading: string;
+  message: string;
+  onDismiss?: () => void;
+}) {
+  const { colors } = useTheme();
+  if (!visible) return null;
+  return (
+    <View
+      style={[
+        inlineTipStyles.container,
+        { backgroundColor: colors.card, borderColor: colors.primary },
+      ]}
+    >
+      <Text style={[inlineTipStyles.heading, { color: colors.foreground }]}>
+        {heading}
+      </Text>
+      <Text
+        style={[inlineTipStyles.message, { color: colors.mutedForeground }]}
+      >
+        {message}
+      </Text>
+      {onDismiss && (
+        <TouchableOpacity onPress={onDismiss} hitSlop={12} style={inlineTipStyles.close}>
+          <X size={14} color={colors.mutedForeground} />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
+const inlineTipStyles = StyleSheet.create({
+  container: {
+    marginHorizontal: spacing.xs,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    gap: 4,
+  },
+  heading: {
+    fontSize: 14,
+    fontWeight: '700',
+    paddingRight: spacing.lg,
+  },
+  message: {
+    fontSize: 13,
+    lineHeight: 19,
+    paddingRight: spacing.lg,
+  },
+  close: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    padding: 2,
+  },
+});
 
 const s = StyleSheet.create({
   darkRegion: {

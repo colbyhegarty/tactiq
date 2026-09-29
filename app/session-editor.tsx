@@ -567,6 +567,16 @@ export default function SessionEditorScreen() {
   const addActivityRef = useRef<View>(null);
   const titleLayout = useMeasure(titleFieldRef, [showGuide, guideStep]);
   const addActivityLayout = useMeasure(addActivityRef, [showGuide, guideStep]);
+  // Delay showing the Add Activity tip so the user has time to type a title
+  const [addDrillTipReady, setAddDrillTipReady] = useState(false);
+  useEffect(() => {
+    if (showGuide && selectedGoal === 'build_practice' && guideStep === 2) {
+      const t = setTimeout(() => setAddDrillTipReady(true), 3000);
+      return () => clearTimeout(t);
+    } else {
+      setAddDrillTipReady(false);
+    }
+  }, [showGuide, selectedGoal, guideStep]);
 
   useEffect(() => {
     if (!isNew && params.id) {
@@ -659,9 +669,9 @@ export default function SessionEditorScreen() {
         onSkip={completeGuide}
       />
 
-      {/* Spotlight step 2: Highlight Add Activity button */}
+      {/* Spotlight step 2: Highlight Add Activity button (delayed to let user type title) */}
       <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2}
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2 && addDrillTipReady}
         target={addActivityLayout}
         heading="Add a drill"
         message="Tap here to add your first drill to this session."

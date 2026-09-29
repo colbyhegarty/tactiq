@@ -146,8 +146,8 @@ export default function SessionsScreen() {
   const router = useRouter();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
   const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
-  const plusBtnRef = useRef<View>(null);
-  const plusBtnLayout = useMeasure(plusBtnRef, [showGuide, guideStep]);
+  const createBtnRef = useRef<View>(null);
+  const createBtnLayout = useMeasure(createBtnRef, [showGuide, guideStep]);
 
   useFocusEffect(useCallback(() => { loadSessions(); trackScreen('Sessions'); }, []));
 
@@ -272,23 +272,23 @@ export default function SessionsScreen() {
           <TouchableOpacity style={[st.headerBtn, (calendarOpen || filterDate) && st.headerBtnActive]} onPress={toggleCalendar}>
             <Calendar size={22} color={(calendarOpen || filterDate) ? tc.primaryForeground : tc.foreground} />
           </TouchableOpacity>
-          <TouchableOpacity ref={plusBtnRef} style={st.headerBtn} onPress={handleCreateSession}>
+          <TouchableOpacity style={st.headerBtn} onPress={handleCreateSession}>
             <Plus size={22} color={tc.foreground} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Spotlight overlay — step 0: highlight + button */}
+      {/* Spotlight overlay — step 0: highlight Create Session button */}
       <SpotlightOverlay
         visible={showGuide && selectedGoal === 'build_practice' && guideStep === 0}
-        target={plusBtnLayout}
+        target={createBtnLayout}
         heading="Create your first session"
-        message="Tap the + button to get started building a practice plan."
+        message="Tap this button to get started building a practice plan."
         onTargetPress={() => {
           advanceGuide();
           handleCreateSession();
         }}
-        tooltipPosition="below"
+        tooltipPosition="above"
         onSkip={completeGuide}
       />
 
@@ -319,7 +319,7 @@ export default function SessionsScreen() {
             <Text style={st.emptyTitle}>{filterDate ? 'No sessions on this day' : 'No sessions yet'}</Text>
             <Text style={st.emptySubtitle}>{filterDate ? 'Try selecting a different date' : 'Create your first training session'}</Text>
             {!filterDate && (
-              <TouchableOpacity style={st.createButton} onPress={handleCreateSession}>
+              <TouchableOpacity ref={createBtnRef} style={st.createButton} onPress={handleCreateSession}>
                 <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
               </TouchableOpacity>
             )}
