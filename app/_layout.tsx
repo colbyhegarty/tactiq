@@ -54,7 +54,10 @@ function RootStack() {
           router.replace('/');
           break;
         case 'create_drill':
-          router.replace('/drill-editor');
+          // Navigate to Create tab first, then push drill editor on top
+          // so the back button has somewhere to go
+          router.replace('/create');
+          setTimeout(() => router.push('/drill-editor'), 150);
           break;
         case 'explore':
         default:
