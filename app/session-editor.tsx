@@ -17,7 +17,7 @@ import {
   Trash2,
   X
 } from 'lucide-react-native';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,7 +36,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { track } from '../src/lib/analytics';
-import { useOnboarding, CoachTooltip } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
@@ -563,6 +563,10 @@ export default function SessionEditorScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
+  const titleFieldRef = useRef<View>(null);
+  const addActivityRef = useRef<View>(null);
+  const titleLayout = useMeasure(titleFieldRef, [showGuide, guideStep]);
+  const addActivityLayout = useMeasure(addActivityRef, [showGuide, guideStep]);
 
   useEffect(() => {
     if (!isNew && params.id) {
@@ -644,34 +648,48 @@ export default function SessionEditorScreen() {
         <Text style={s.headerTitle}>{isNew ? 'New Session' : 'Edit Session'}</Text>
       </View>
 
-      {/* Guide step 1: Name your session */}
-      {showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew && (
-        <CoachTooltip
-          arrow="down"
-          heading="Name your session"
-          message="Give your practice plan a title, then scroll down to add drills."
-          buttonText="Next"
-          onDismiss={advanceGuide}
-        />
-      )}
+      {/* Spotlight step 1: Highlight title field */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew}
+        target={titleLayout}
+        heading="Name your session"
+        message="Tap the title field to give your practice plan a name."
+        onTargetPress={advanceGuide}
+        tooltipPosition="below"
+        onSkip={completeGuide}
+      />
 
-      {/* Guide step 3: Congrats after adding first drill */}
-      {showGuide && selectedGoal === 'build_practice' && guideStep === 3 && (
-        <CoachTooltip
-          celebrate
-          heading="Nice work!"
-          message="You added your first drill. Keep adding more to build out your practice, then tap Save when you are done."
-          buttonText="Finish"
-          onDismiss={completeGuide}
-        />
-      )}
+      {/* Spotlight step 2: Highlight Add Activity button */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2}
+        target={addActivityLayout}
+        heading="Add a drill"
+        message="Tap here to add your first drill to this session."
+        onTargetPress={() => {
+          setEditingActivity(null);
+          setShowAddModal(true);
+        }}
+        tooltipPosition="above"
+        onSkip={completeGuide}
+      />
+
+      {/* Spotlight step 3: Congrats — no target, centered */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 3}
+        heading="Nice work!"
+        message="You added your first drill. Keep adding more to build out your practice, then tap Save when you're done."
+        celebrate
+        buttonText="Got it"
+        onButtonPress={completeGuide}
+        onSkip={completeGuide}
+      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Session Details */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>SESSION DETAILS</Text>
-            <View style={s.fieldGroup}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={tc.mutedForeground} /></View>
+            <View ref={titleFieldRef} style={s.fieldGroup}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={tc.mutedForeground} /></View>
             <View style={s.fieldGroup}><Text style={s.label}>Team / Group</Text><TextInput style={s.input} value={session.team_name} onChangeText={v => setSession({...session, team_name: v})} placeholder="e.g., U12 Boys" placeholderTextColor={tc.mutedForeground} /></View>
             <View style={s.row}>
               <View style={[s.fieldGroup, { flex: 1 }]}>
@@ -708,17 +726,7 @@ export default function SessionEditorScreen() {
                   isFirst={i === 0} isLast={i === activities.length - 1} />
               ))
             )}
-            {/* Guide step 2: Add a drill */}
-            {showGuide && selectedGoal === 'build_practice' && guideStep === 2 && (
-              <CoachTooltip
-                arrow="down"
-                heading="Add a drill"
-                message="Tap below to add your first drill to this session."
-                buttonText="Add Drill"
-                onDismiss={() => { setEditingActivity(null); setShowAddModal(true); }}
-              />
-            )}
-            <TouchableOpacity style={s.addDashed} onPress={() => { setEditingActivity(null); setShowAddModal(true); }}>
+            <TouchableOpacity ref={addActivityRef} style={s.addDashed} onPress={() => { setEditingActivity(null); setShowAddModal(true); }}>
               <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
             </TouchableOpacity>
           </View>

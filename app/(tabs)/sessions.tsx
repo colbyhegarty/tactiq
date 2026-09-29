@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, Copy, Edit, Plus, Trash2, Users, X } from 'lucide-react-native';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Alert, LayoutAnimation, Platform, ScrollView, StatusBar,
   StyleSheet,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
-import { useOnboarding, CoachTooltip } from '../../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../../src/onboarding';
 import { usePaywallGate, PaywallModal } from '../../src/subscription';
 import { trackScreen, track } from '../../src/lib/analytics';
 import { borderRadius, spacing } from '../../src/theme/colors';
@@ -145,7 +145,9 @@ export default function SessionsScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const router = useRouter();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
-  const { selectedGoal, showGuide, guideStep, advanceGuide } = useOnboarding();
+  const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
+  const plusBtnRef = useRef<View>(null);
+  const plusBtnLayout = useMeasure(plusBtnRef, [showGuide, guideStep]);
 
   useFocusEffect(useCallback(() => { loadSessions(); trackScreen('Sessions'); }, []));
 
@@ -270,25 +272,25 @@ export default function SessionsScreen() {
           <TouchableOpacity style={[st.headerBtn, (calendarOpen || filterDate) && st.headerBtnActive]} onPress={toggleCalendar}>
             <Calendar size={22} color={(calendarOpen || filterDate) ? tc.primaryForeground : tc.foreground} />
           </TouchableOpacity>
-          <TouchableOpacity style={st.headerBtn} onPress={handleCreateSession}>
+          <TouchableOpacity ref={plusBtnRef} style={st.headerBtn} onPress={handleCreateSession}>
             <Plus size={22} color={tc.foreground} />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Post-onboarding guide — step 0: prompt to create session */}
-      {showGuide && selectedGoal === 'build_practice' && guideStep === 0 && (
-        <CoachTooltip
-          arrow="up"
-          heading="Create your first session"
-          message="Tap the + button above to get started building a practice plan."
-          buttonText="Next"
-          onDismiss={() => {
-            advanceGuide();
-            handleCreateSession();
-          }}
-        />
-      )}
+      {/* Spotlight overlay — step 0: highlight + button */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 0}
+        target={plusBtnLayout}
+        heading="Create your first session"
+        message="Tap the + button to get started building a practice plan."
+        onTargetPress={() => {
+          advanceGuide();
+          handleCreateSession();
+        }}
+        tooltipPosition="below"
+        onSkip={completeGuide}
+      />
 
       {/* Inline Calendar */}
       {calendarOpen && (

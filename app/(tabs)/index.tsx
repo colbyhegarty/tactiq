@@ -34,7 +34,7 @@ import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillC
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
 import { PaywallModal, PreviewBanner, usePaywallGate, useSubscription, isDrillFree } from '../../src/subscription';
 import { MAX_PREVIEW_VIEWS } from '../../src/subscription/proPreview';
-import { useOnboarding, CoachTooltip } from '../../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../../src/onboarding';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -48,6 +48,9 @@ export default function LibraryScreen() {
   const { subscription, isDrillUnlocked, tryPreviewDrill, previewRemaining, previewState } = useSubscription();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
   const { selectedGoal, showGuide, completeGuide } = useOnboarding();
+  const filterToggleRef = useRef<View>(null);
+  const filterToggleFn = useRef<(() => void) | null>(null);
+  const filterLayout = useMeasure(filterToggleRef, [showGuide]);
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
   const [previewBannerRemaining, setPreviewBannerRemaining] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
@@ -442,6 +445,13 @@ export default function LibraryScreen() {
           onFilterChange={setFilters}
           resultCount={allDrills.length}
           isLoading={isLoading}
+          filterToggleRef={filterToggleRef}
+          toggleRef={filterToggleFn}
+          onFiltersToggle={(open) => {
+            if (open && showGuide && selectedGoal === 'find_drills') {
+              completeGuide();
+            }
+          }}
         />
         <View style={styles.viewToggleRow}>
           <View style={{ flex: 1 }} />
@@ -462,16 +472,18 @@ export default function LibraryScreen() {
         </View>
       </View>
 
-      {/* Post-onboarding guide — arrow pointing to filters */}
-      {showGuide && selectedGoal === 'find_drills' && (
-        <CoachTooltip
-          arrow="up"
-          heading="Use filters to find drills"
-          message="Tap the filter bar above to search by category, age group, difficulty, and more."
-          buttonText="Got it"
-          onDismiss={completeGuide}
-        />
-      )}
+      {/* Spotlight overlay — highlight filter toggle */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'find_drills'}
+        target={filterLayout}
+        heading="Use filters to find drills"
+        message="Tap the filter bar to search by category, age group, difficulty, and more."
+        onTargetPress={() => {
+          filterToggleFn.current?.();
+        }}
+        tooltipPosition="below"
+        onSkip={completeGuide}
+      />
 
       {/* Preview remaining banner */}
       {showPreviewBanner && (

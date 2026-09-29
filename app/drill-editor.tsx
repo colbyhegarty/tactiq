@@ -23,7 +23,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
-import { useOnboarding, CoachTooltip } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -53,7 +53,11 @@ export default function DrillEditorScreen() {
   const [categories, setCategories] = useState<string[]>([]);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [dropdownField, setDropdownField] = useState<'category' | 'difficulty' | null>(null);
-  const { selectedGoal, showGuide, completeGuide } = useOnboarding();
+  const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
+  const toolsHeaderRef = useRef<View>(null);
+  const propsHeaderRef = useRef<View>(null);
+  const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep]);
+  const propsHeaderLayout = useMeasure(propsHeaderRef, [showGuide, guideStep]);
 
   // Undo history — stores previous diagram states (max 50)
   const undoStack = useRef<DiagramData[]>([]);
@@ -248,16 +252,54 @@ export default function DrillEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Post-onboarding guide — create_drill: prompt to explore dropdowns */}
-      {showGuide && selectedGoal === 'create_drill' && (
-        <CoachTooltip
-          arrow="down"
-          heading="Explore the drill editor"
-          message="Open the Tools, Properties, and Drill Details sections below to see all the features available for building your drill."
-          buttonText="Got it"
-          onDismiss={completeGuide}
-        />
-      )}
+      {/* Spotlight step 0: Highlight Tools header */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'create_drill' && guideStep === 0}
+        target={toolsHeaderLayout}
+        heading="Open the Tools panel"
+        message="Tap here to see the tools you can use to build your drill diagram."
+        onTargetPress={() => {
+          if (!toolsOpen) toggle(setToolsOpen);
+          advanceGuide();
+        }}
+        tooltipPosition="above"
+        onSkip={completeGuide}
+      />
+
+      {/* Spotlight step 1: Tools is open — explain features */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'create_drill' && guideStep === 1}
+        heading="Your drill-building tools"
+        message="Add players, cones, goals, and movement arrows to your drill diagram. Use the select tool to move and edit elements."
+        buttonText="Next"
+        onButtonPress={advanceGuide}
+        onSkip={completeGuide}
+      />
+
+      {/* Spotlight step 2: Highlight Properties header */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'create_drill' && guideStep === 2}
+        target={propsHeaderLayout}
+        heading="Open Properties"
+        message="Tap here to customize the selected element's color, size, and style."
+        onTargetPress={() => {
+          if (!propsOpen) toggle(setPropsOpen);
+          advanceGuide();
+        }}
+        tooltipPosition="above"
+        onSkip={completeGuide}
+      />
+
+      {/* Spotlight step 3: Properties open — explain features */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'create_drill' && guideStep === 3}
+        heading="Customize your drill"
+        message="Change colors, sizes, and styles for players, cones, and other elements. Select an element on the canvas to see its properties here."
+        celebrate
+        buttonText="Got it"
+        onButtonPress={completeGuide}
+        onSkip={completeGuide}
+      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -277,7 +319,7 @@ export default function DrillEditorScreen() {
           />
 
           {/* Tools - collapsible */}
-          <TouchableOpacity style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => toggle(setToolsOpen)} activeOpacity={0.7}>
+          <TouchableOpacity ref={toolsHeaderRef} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => toggle(setToolsOpen)} activeOpacity={0.7}>
             <Text style={e.sectionToggleText}>Tools</Text>
             {toolsOpen ? <ChevronUp size={16} color={tc.mutedForeground} /> : <ChevronDown size={16} color={tc.mutedForeground} />}
           </TouchableOpacity>
@@ -290,7 +332,7 @@ export default function DrillEditorScreen() {
           )}
 
           {/* Properties - collapsible */}
-          <TouchableOpacity style={[e.sectionToggle, propsOpen && e.sectionToggleOpen]} onPress={() => toggle(setPropsOpen)} activeOpacity={0.7}>
+          <TouchableOpacity ref={propsHeaderRef} style={[e.sectionToggle, propsOpen && e.sectionToggleOpen]} onPress={() => toggle(setPropsOpen)} activeOpacity={0.7}>
             <Text style={e.sectionToggleText}>Properties</Text>
             {propsOpen ? <ChevronUp size={16} color={tc.mutedForeground} /> : <ChevronDown size={16} color={tc.mutedForeground} />}
           </TouchableOpacity>

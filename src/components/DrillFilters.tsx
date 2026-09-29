@@ -38,6 +38,12 @@ interface DrillFiltersProps {
   onFilterChange: (filters: DrillFilterParams) => void;
   resultCount?: number;
   isLoading?: boolean;
+  /** Called when the filter panel is opened/closed */
+  onFiltersToggle?: (open: boolean) => void;
+  /** Ref forwarded to the filter toggle button for measurement */
+  filterToggleRef?: React.Ref<View>;
+  /** Imperative ref to programmatically toggle filters */
+  toggleRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 export function DrillFilters({
@@ -48,6 +54,9 @@ export function DrillFilters({
   onFilterChange,
   resultCount,
   isLoading,
+  onFiltersToggle,
+  filterToggleRef,
+  toggleRef,
 }: DrillFiltersProps) {
   const { colors: tc } = useTheme();
   const styles = create_styles(tc);
@@ -122,9 +131,16 @@ export function DrillFilters({
 
   const toggleFilters = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setFiltersOpen(!filtersOpen);
+    const next = !filtersOpen;
+    setFiltersOpen(next);
     setActiveDropdown(null);
+    onFiltersToggle?.(next);
   };
+
+  // Expose toggle function for programmatic use (e.g., from onboarding spotlight)
+  useEffect(() => {
+    if (toggleRef) toggleRef.current = toggleFilters;
+  });
 
   const toggleDropdown = (name: string) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -273,6 +289,7 @@ export function DrillFilters({
 
       {/* Collapsible Filters Button */}
       <TouchableOpacity
+        ref={filterToggleRef}
         style={[styles.filtersToggle, filtersOpen && styles.filtersToggleOpen]}
         onPress={toggleFilters}
         activeOpacity={0.7}
