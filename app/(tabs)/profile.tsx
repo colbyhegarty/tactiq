@@ -479,13 +479,22 @@ export default function ProfileScreen() {
                 <Text style={[ps.devSectionTitle, { color: colors.mutedForeground }]}>Dev Tools</Text>
                 <TouchableOpacity
                   style={[ps.devButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-                  onPress={() => { resetOnboarding(); Alert.alert('Done', 'Onboarding reset. Restart the app to see it.'); }}
+                  onPress={() => {
+                    setSettingsOpen(false);
+                    setTimeout(() => {
+                      resetOnboarding();
+                      Alert.alert('Done', 'Onboarding reset. Restart the app to see it.');
+                    }, 300);
+                  }}
                 >
                   <Text style={[ps.devButtonText, { color: colors.foreground }]}>Reset Onboarding</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[ps.devButton, { backgroundColor: colors.card, borderColor: colors.border }]}
-                  onPress={() => { __devResetPreview(); Alert.alert('Done', 'Pro drill preview reset to 5 views.'); }}
+                  onPress={async () => {
+                    await __devResetPreview();
+                    Alert.alert('Done', 'Pro drill preview reset to 5 views. Restart to fully apply.');
+                  }}
                 >
                   <Text style={[ps.devButtonText, { color: colors.foreground }]}>Reset Pro Preview</Text>
                 </TouchableOpacity>

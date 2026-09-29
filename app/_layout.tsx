@@ -54,7 +54,7 @@ function RootStack() {
           router.replace('/');
           break;
         case 'create_drill':
-          router.replace('/create');
+          router.replace('/drill-editor');
           break;
         case 'explore':
         default:

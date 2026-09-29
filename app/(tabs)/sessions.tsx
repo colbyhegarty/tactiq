@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
-import { useOnboarding, CoachCard } from '../../src/onboarding';
+import { useOnboarding, CoachTooltip } from '../../src/onboarding';
 import { usePaywallGate, PaywallModal } from '../../src/subscription';
 import { trackScreen, track } from '../../src/lib/analytics';
 import { borderRadius, spacing } from '../../src/theme/colors';
@@ -145,7 +145,7 @@ export default function SessionsScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const router = useRouter();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
-  const { selectedGoal, showGuide, dismissGuide } = useOnboarding();
+  const { selectedGoal, showGuide, guideStep, advanceGuide } = useOnboarding();
 
   useFocusEffect(useCallback(() => { loadSessions(); trackScreen('Sessions'); }, []));
 
@@ -276,13 +276,17 @@ export default function SessionsScreen() {
         </View>
       </View>
 
-      {/* Post-onboarding guide */}
-      {showGuide && selectedGoal === 'build_practice' && (
-        <CoachCard
-          icon={CalendarDays}
-          title="Build your first practice"
-          description={"Tap the + button to create a session, then add drills from the library to build out your plan."}
-          onDismiss={dismissGuide}
+      {/* Post-onboarding guide — step 0: prompt to create session */}
+      {showGuide && selectedGoal === 'build_practice' && guideStep === 0 && (
+        <CoachTooltip
+          arrow="up"
+          heading="Create your first session"
+          message="Tap the + button above to get started building a practice plan."
+          buttonText="Next"
+          onDismiss={() => {
+            advanceGuide();
+            handleCreateSession();
+          }}
         />
       )}
 

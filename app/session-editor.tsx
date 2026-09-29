@@ -36,6 +36,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { track } from '../src/lib/analytics';
+import { useOnboarding, CoachTooltip } from '../src/onboarding';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
@@ -561,6 +562,7 @@ export default function SessionEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
+  const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
 
   useEffect(() => {
     if (!isNew && params.id) {
@@ -594,12 +596,18 @@ export default function SessionEditorScreen() {
       setActivities(prev => prev.map(a => a.id === editingActivity.id ? { ...activity, sort_order: a.sort_order } : a));
       setEditingActivity(null);
     } else {
+      const isFirstDrill = activities.length === 0;
       setActivities(prev => [...prev, { ...activity, sort_order: prev.length }]);
       const source = activity.activity_type === 'quick_activity' ? 'quick'
         : activity.activity_type === 'custom_drill' ? 'custom'
         : activity.library_drill_id && !activity.custom_drill_id ? 'library'
         : 'saved';
       track('drill_added_to_session', { drill_name: activity.drill_name || activity.title || 'Unknown', source });
+
+      // Advance guide to congrats step when first drill is added
+      if (isFirstDrill && showGuide && selectedGoal === 'build_practice' && guideStep === 2) {
+        advanceGuide();
+      }
     }
   };
 
@@ -635,6 +643,28 @@ export default function SessionEditorScreen() {
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}><ArrowLeft size={22} color={tc.foreground} /></TouchableOpacity>
         <Text style={s.headerTitle}>{isNew ? 'New Session' : 'Edit Session'}</Text>
       </View>
+
+      {/* Guide step 1: Name your session */}
+      {showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew && (
+        <CoachTooltip
+          arrow="down"
+          heading="Name your session"
+          message="Give your practice plan a title, then scroll down to add drills."
+          buttonText="Next"
+          onDismiss={advanceGuide}
+        />
+      )}
+
+      {/* Guide step 3: Congrats after adding first drill */}
+      {showGuide && selectedGoal === 'build_practice' && guideStep === 3 && (
+        <CoachTooltip
+          celebrate
+          heading="Nice work!"
+          message="You added your first drill. Keep adding more to build out your practice, then tap Save when you are done."
+          buttonText="Finish"
+          onDismiss={completeGuide}
+        />
+      )}
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
@@ -677,6 +707,16 @@ export default function SessionEditorScreen() {
                   onDelete={() => setActivities(prev => prev.filter(a => a.id !== act.id))}
                   isFirst={i === 0} isLast={i === activities.length - 1} />
               ))
+            )}
+            {/* Guide step 2: Add a drill */}
+            {showGuide && selectedGoal === 'build_practice' && guideStep === 2 && (
+              <CoachTooltip
+                arrow="down"
+                heading="Add a drill"
+                message="Tap below to add your first drill to this session."
+                buttonText="Add Drill"
+                onDismiss={() => { setEditingActivity(null); setShowAddModal(true); }}
+              />
             )}
             <TouchableOpacity style={s.addDashed} onPress={() => { setEditingActivity(null); setShowAddModal(true); }}>
               <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>

@@ -23,6 +23,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
+import { useOnboarding, CoachTooltip } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -52,6 +53,7 @@ export default function DrillEditorScreen() {
   const [categories, setCategories] = useState<string[]>([]);
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [dropdownField, setDropdownField] = useState<'category' | 'difficulty' | null>(null);
+  const { selectedGoal, showGuide, completeGuide } = useOnboarding();
 
   // Undo history — stores previous diagram states (max 50)
   const undoStack = useRef<DiagramData[]>([]);
@@ -245,6 +247,17 @@ export default function DrillEditorScreen() {
           <Save size={18} color={tc.primaryForeground} />
         </TouchableOpacity>
       </View>
+
+      {/* Post-onboarding guide — create_drill: prompt to explore dropdowns */}
+      {showGuide && selectedGoal === 'create_drill' && (
+        <CoachTooltip
+          arrow="down"
+          heading="Explore the drill editor"
+          message="Open the Tools, Properties, and Drill Details sections below to see all the features available for building your drill."
+          buttonText="Got it"
+          onDismiss={completeGuide}
+        />
+      )}
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView

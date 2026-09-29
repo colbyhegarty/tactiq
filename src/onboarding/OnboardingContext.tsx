@@ -13,8 +13,10 @@ interface OnboardingState {
   hasCompletedOnboarding: boolean;
   selectedGoal: OnboardingGoal | null;
   completedAt: string | null;
-  /** Whether the post-onboarding guide card has been dismissed */
-  guideDismissed: boolean;
+  /** Whether the post-onboarding guided flow has been completed */
+  guideCompleted: boolean;
+  /** Current step in the guided flow (0-based) */
+  guideStep: number;
 }
 
 interface OnboardingContextType {
@@ -24,13 +26,17 @@ interface OnboardingContextType {
   hasCompletedOnboarding: boolean;
   /** The goal selected during onboarding */
   selectedGoal: OnboardingGoal | null;
-  /** Whether the post-onboarding guide card should be shown */
+  /** Whether the guided flow should be shown */
   showGuide: boolean;
+  /** Current step in the guided flow */
+  guideStep: number;
   /** Complete onboarding with a selected goal */
   completeOnboarding: (goal: OnboardingGoal) => void;
-  /** Dismiss the post-onboarding guide card */
-  dismissGuide: () => void;
-  /** Reset onboarding (for dev/testing) */
+  /** Advance to the next step in the guided flow */
+  advanceGuide: () => void;
+  /** Complete (finish) the guided flow */
+  completeGuide: () => void;
+  /** Reset onboarding (for dev/testing — storage only, requires restart) */
   resetOnboarding: () => void;
 }
 
@@ -41,7 +47,8 @@ const defaultState: OnboardingState = {
   hasCompletedOnboarding: false,
   selectedGoal: null,
   completedAt: null,
-  guideDismissed: false,
+  guideCompleted: false,
+  guideStep: 0,
 };
 
 // ── Context ───────────────────────────────────────────────────────
@@ -50,8 +57,10 @@ const OnboardingContext = createContext<OnboardingContextType>({
   hasCompletedOnboarding: false,
   selectedGoal: null,
   showGuide: false,
+  guideStep: 0,
   completeOnboarding: () => {},
-  dismissGuide: () => {},
+  advanceGuide: () => {},
+  completeGuide: () => {},
   resetOnboarding: () => {},
 });
 
@@ -84,20 +93,30 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         hasCompletedOnboarding: true,
         selectedGoal: goal,
         completedAt: new Date().toISOString(),
+        guideCompleted: false,
+        guideStep: 0,
       });
     },
     [persist],
   );
 
-  const dismissGuide = useCallback(() => {
+  const advanceGuide = useCallback(() => {
+    const nextStep = state.guideStep + 1;
+    persist({ ...state, guideStep: nextStep });
+  }, [persist, state]);
+
+  const completeGuide = useCallback(() => {
     track('onboarding_guide_dismissed', { goal: state.selectedGoal });
-    persist({ ...state, guideDismissed: true });
+    persist({ ...state, guideCompleted: true });
   }, [persist, state]);
 
   const resetOnboarding = useCallback(() => {
     track('onboarding_reset', {});
-    persist(defaultState);
-  }, [persist]);
+    // Only clear storage — don't update in-memory state to avoid
+    // re-rendering the OnboardingFlow while modals are open (causes freeze).
+    // Requires app restart to take effect.
+    AsyncStorage.removeItem(ONBOARDING_KEY);
+  }, []);
 
   return (
     <OnboardingContext.Provider
@@ -105,9 +124,11 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         isLoaded,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         selectedGoal: state.selectedGoal,
-        showGuide: state.hasCompletedOnboarding && !state.guideDismissed && state.selectedGoal !== 'explore',
+        showGuide: state.hasCompletedOnboarding && !state.guideCompleted && state.selectedGoal !== 'explore',
+        guideStep: state.guideStep,
         completeOnboarding,
-        dismissGuide,
+        advanceGuide,
+        completeGuide,
         resetOnboarding,
       }}
     >

@@ -34,7 +34,7 @@ import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillC
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
 import { PaywallModal, PreviewBanner, usePaywallGate, useSubscription, isDrillFree } from '../../src/subscription';
 import { MAX_PREVIEW_VIEWS } from '../../src/subscription/proPreview';
-import { useOnboarding, CoachCard } from '../../src/onboarding';
+import { useOnboarding, CoachTooltip } from '../../src/onboarding';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -47,7 +47,7 @@ export default function LibraryScreen() {
   const styles = useMemo(() => create_styles(tc), [tc]);
   const { subscription, isDrillUnlocked, tryPreviewDrill, previewRemaining, previewState } = useSubscription();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
-  const { selectedGoal, showGuide, dismissGuide } = useOnboarding();
+  const { selectedGoal, showGuide, completeGuide } = useOnboarding();
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
   const [previewBannerRemaining, setPreviewBannerRemaining] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
@@ -462,13 +462,14 @@ export default function LibraryScreen() {
         </View>
       </View>
 
-      {/* Post-onboarding guide */}
+      {/* Post-onboarding guide — arrow pointing to filters */}
       {showGuide && selectedGoal === 'find_drills' && (
-        <CoachCard
-          icon={Library}
-          title="Find the right drill"
-          description="Use the filters above to search by category, age group, player count, and more. Tap any drill to see the full details."
-          onDismiss={dismissGuide}
+        <CoachTooltip
+          arrow="up"
+          heading="Use filters to find drills"
+          message="Tap the filter bar above to search by category, age group, difficulty, and more."
+          buttonText="Got it"
+          onDismiss={completeGuide}
         />
       )}
 
