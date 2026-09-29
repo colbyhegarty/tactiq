@@ -32,8 +32,9 @@ import {
 } from '../../src/lib/api';
 import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillCache';
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
-import { PaywallModal, PreviewBanner, usePaywallGate, useSubscription } from '../../src/subscription';
+import { PaywallModal, PreviewBanner, usePaywallGate, useSubscription, isDrillFree } from '../../src/subscription';
 import { MAX_PREVIEW_VIEWS } from '../../src/subscription/proPreview';
+import { useOnboarding, CoachCard } from '../../src/onboarding';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -44,8 +45,9 @@ export default function LibraryScreen() {
   const router = useRouter();
   const { colors: tc, isDark } = useTheme();
   const styles = useMemo(() => create_styles(tc), [tc]);
-  const { isDrillUnlocked, tryPreviewDrill, previewRemaining, previewState } = useSubscription();
+  const { subscription, isDrillUnlocked, tryPreviewDrill, previewRemaining, previewState } = useSubscription();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
+  const { selectedGoal, showGuide, dismissGuide } = useOnboarding();
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
   const [previewBannerRemaining, setPreviewBannerRemaining] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
@@ -220,36 +222,44 @@ export default function LibraryScreen() {
   }, []);
 
   const handleViewDrill = useCallback(async (drill: Drill) => {
-    // Drill is already unlocked (free drill, pro user, or already previewed)
-    if (isDrillUnlocked(drill.id)) {
+    // Pro users always get full access
+    if (subscription.isProUser) {
       await loadAndShowDrill(drill);
       return;
     }
 
-    // Locked drill tapped — try preview first
-    track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
-
-    const previewResult = await tryPreviewDrill(drill.id);
-
-    if (previewResult.allowed) {
-      // Preview granted — show remaining count briefly
-      setPreviewBannerRemaining(previewResult.remaining);
-      setShowPreviewBanner(true);
-      setTimeout(() => setShowPreviewBanner(false), 3000);
-
-      // Open the drill
-      await loadAndShowDrill(drill, true);
-
-      // If this was the last preview, show paywall after they close the drill
-      if (previewResult.justExhausted) {
-        // The paywall will show on next locked drill tap
-      }
+    // Free drills always accessible without consuming a preview
+    if (isDrillFree(drill.id)) {
+      await loadAndShowDrill(drill);
       return;
     }
 
+    // Pro drill — already previewed during active preview period (re-view is free)
+    if (!previewState.exhausted && previewState.viewedDrillIds.includes(drill.id)) {
+      await loadAndShowDrill(drill, true);
+      return;
+    }
+
+    // Pro drill — try to consume a new preview slot
+    if (!previewState.exhausted) {
+      const result = await tryPreviewDrill(drill.id);
+      if (result.allowed) {
+        // Show countdown banner only after 2nd unique preview
+        const totalViewed = MAX_PREVIEW_VIEWS - result.remaining;
+        if (totalViewed >= 2) {
+          setPreviewBannerRemaining(result.remaining);
+          setShowPreviewBanner(true);
+          setTimeout(() => setShowPreviewBanner(false), 3000);
+        }
+        await loadAndShowDrill(drill, true);
+        return;
+      }
+    }
+
     // Preview exhausted — show paywall
+    track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
     await gate('view_locked_drill');
-  }, [isDrillUnlocked, tryPreviewDrill, gate, loadAndShowDrill]);
+  }, [subscription.isProUser, previewState, tryPreviewDrill, gate, loadAndShowDrill]);
 
   const handleSaveDrill = useCallback(async (drill: Drill) => {
     const currentlySaved = savedState[drill.id] ?? (await isDrillSaved(drill.id));
@@ -452,13 +462,23 @@ export default function LibraryScreen() {
         </View>
       </View>
 
+      {/* Post-onboarding guide */}
+      {showGuide && selectedGoal === 'find_drills' && (
+        <CoachCard
+          icon={Library}
+          title="Find the right drill"
+          description="Use the filters above to search by category, age group, player count, and more. Tap any drill to see the full details."
+          onDismiss={dismissGuide}
+        />
+      )}
+
       {/* Preview remaining banner */}
       {showPreviewBanner && (
         <PreviewBanner remaining={previewBannerRemaining} total={MAX_PREVIEW_VIEWS} />
       )}
 
-      {/* Preview status hint — show when previews are available but some used */}
-      {!previewState.exhausted && previewState.viewedDrillIds.length > 0 && !showPreviewBanner && (
+      {/* Preview status hint — show after 2nd unique Pro drill preview */}
+      {!previewState.exhausted && previewState.viewedDrillIds.length >= 2 && !showPreviewBanner && (
         <PreviewBanner remaining={previewRemaining} total={MAX_PREVIEW_VIEWS} />
       )}
 

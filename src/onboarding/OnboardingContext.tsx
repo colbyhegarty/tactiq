@@ -13,6 +13,8 @@ interface OnboardingState {
   hasCompletedOnboarding: boolean;
   selectedGoal: OnboardingGoal | null;
   completedAt: string | null;
+  /** Whether the post-onboarding guide card has been dismissed */
+  guideDismissed: boolean;
 }
 
 interface OnboardingContextType {
@@ -22,8 +24,12 @@ interface OnboardingContextType {
   hasCompletedOnboarding: boolean;
   /** The goal selected during onboarding */
   selectedGoal: OnboardingGoal | null;
+  /** Whether the post-onboarding guide card should be shown */
+  showGuide: boolean;
   /** Complete onboarding with a selected goal */
   completeOnboarding: (goal: OnboardingGoal) => void;
+  /** Dismiss the post-onboarding guide card */
+  dismissGuide: () => void;
   /** Reset onboarding (for dev/testing) */
   resetOnboarding: () => void;
 }
@@ -35,6 +41,7 @@ const defaultState: OnboardingState = {
   hasCompletedOnboarding: false,
   selectedGoal: null,
   completedAt: null,
+  guideDismissed: false,
 };
 
 // ── Context ───────────────────────────────────────────────────────
@@ -42,7 +49,9 @@ const OnboardingContext = createContext<OnboardingContextType>({
   isLoaded: false,
   hasCompletedOnboarding: false,
   selectedGoal: null,
+  showGuide: false,
   completeOnboarding: () => {},
+  dismissGuide: () => {},
   resetOnboarding: () => {},
 });
 
@@ -80,6 +89,11 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
     [persist],
   );
 
+  const dismissGuide = useCallback(() => {
+    track('onboarding_guide_dismissed', { goal: state.selectedGoal });
+    persist({ ...state, guideDismissed: true });
+  }, [persist, state]);
+
   const resetOnboarding = useCallback(() => {
     track('onboarding_reset', {});
     persist(defaultState);
@@ -91,7 +105,9 @@ export function OnboardingProvider({ children }: { children: React.ReactNode }) 
         isLoaded,
         hasCompletedOnboarding: state.hasCompletedOnboarding,
         selectedGoal: state.selectedGoal,
+        showGuide: state.hasCompletedOnboarding && !state.guideDismissed && state.selectedGoal !== 'explore',
         completeOnboarding,
+        dismissGuide,
         resetOnboarding,
       }}
     >

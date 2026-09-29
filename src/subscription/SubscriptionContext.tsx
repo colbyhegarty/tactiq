@@ -143,18 +143,17 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
     });
   }, []);
 
-  // ── Drill Access ───────────────────────────────────────────────
-  // Note: isDrillUnlocked only checks free config, NOT preview.
-  // For preview, the caller must use tryPreviewDrill() separately.
-  // This keeps the existing behavior where locked drills show blur/overlay.
+  // ── Drill Access (UI-only) ──────────────────────────────────────
+  // Controls whether drill cards show the lock overlay. During the
+  // preview period ALL drills appear unlocked — no lock icons, no
+  // dimmed thumbnails — so the library feels fully open to new users.
+  // Actual preview consumption is handled separately in tryPreviewDrill.
   const isDrillUnlocked = useCallback(
     (drillId: string): boolean => {
       if (subscription.isProUser) return true;
       if (isDrillFree(drillId)) return true;
-      // During preview period, drills that have been previewed are "soft unlocked"
-      if (!previewState.exhausted && previewState.viewedDrillIds.includes(drillId)) return true;
-      // If preview is still available (not exhausted), Pro drills show as unlockable
-      // but we don't auto-unlock them — user taps to consume a preview
+      // During preview period, show ALL drills as unlocked (no lock icons)
+      if (!previewState.exhausted) return true;
       return false;
     },
     [subscription.isProUser, previewState],

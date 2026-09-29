@@ -21,7 +21,7 @@ export function PreviewBanner({ remaining, total }: PreviewBannerProps) {
       <Eye size={14} color={colors.primary} />
       <Text style={[s.text, { color: colors.primary }]}>
         {remaining > 0
-          ? `Free preview — ${remaining} of ${total} remaining`
+          ? `${remaining} Pro drill preview${remaining === 1 ? '' : 's'} left`
           : `You've used all ${total} free previews`}
       </Text>
     </View>

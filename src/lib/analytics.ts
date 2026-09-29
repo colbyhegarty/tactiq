@@ -89,6 +89,7 @@ type AnalyticsEvents = {
   onboarding_skipped: { step: number };
   onboarding_reset: {};
   onboarding_goal_selected: { goal: string };
+  onboarding_guide_dismissed: { goal: string | null };
 
   // Pro drill preview
   pro_drill_preview_started: {};

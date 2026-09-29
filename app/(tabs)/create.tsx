@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { awaitPrefetch } from '../../src/lib/drillCache';
+import { useOnboarding, CoachCard } from '../../src/onboarding';
 import { PaywallModal, usePaywallGate } from '../../src/subscription';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
@@ -26,6 +27,7 @@ export default function CreateScreen() {
   const router = useRouter();
   const { colors, isDark } = useTheme();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
+  const { selectedGoal, showGuide, dismissGuide } = useOnboarding();
 
   const [showPicker, setShowPicker] = useState(false);
   const [pickerDrills, setPickerDrills] = useState<Drill[]>([]);
@@ -78,6 +80,16 @@ export default function CreateScreen() {
           <Text style={[s.headerTitle, { color: colors.foreground }]}>Create Drill</Text>
         </View>
       </View>
+
+      {/* Post-onboarding guide */}
+      {showGuide && selectedGoal === 'create_drill' && (
+        <CoachCard
+          icon={PenTool}
+          title="Create your own drill"
+          description={"Start from scratch to build a custom drill with the visual editor, or pick an existing drill as a starting template."}
+          onDismiss={dismissGuide}
+        />
+      )}
 
       <View style={s.body}>
         <Text style={[s.subtitle, { color: colors.foreground }]}>How would you like to start?</Text>
