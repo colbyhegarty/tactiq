@@ -116,10 +116,8 @@ export function SpotlightOverlay({
     }
   }, [visible]);
 
-  if (!visible) return null;
-
   // Highlight rectangle (with padding)
-  const hl = target
+  const hl = visible && target
     ? {
         x: target.x - padding,
         y: target.y - padding,
@@ -152,7 +150,7 @@ export function SpotlightOverlay({
     : colors.mutedForeground;
 
   return (
-    <Modal transparent visible animationType="none" statusBarTranslucent>
+    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onSkip}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
         {/* Dark overlay — built from 4 rectangles with a cutout */}
         {hl ? (

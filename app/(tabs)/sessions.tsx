@@ -288,7 +288,7 @@ export default function SessionsScreen() {
           advanceGuide();
           handleCreateSession();
         }}
-        tooltipPosition="above"
+        tooltipPosition="below"
         onSkip={completeGuide}
       />
 
