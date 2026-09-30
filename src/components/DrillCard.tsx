@@ -148,8 +148,6 @@ function DrillCardInner({
             </View>
           ) : null}
 
-          {isLocked && <LockedDrillOverlay />}
-
           {!isLocked && (
             <TouchableOpacity
               style={[styles.bookmarkButton, isSaved && styles.bookmarkButtonSaved]}
@@ -191,6 +189,7 @@ function DrillCardInner({
             </View>
           )}
         </Pressable>
+        {isLocked && <LockedDrillOverlay />}
       </View>
 
       {/* Content */}

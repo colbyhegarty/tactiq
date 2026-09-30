@@ -1,8 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown, ChevronUp, Save, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ChevronUp, Save, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
+  Dimensions,
   FlatList,
   KeyboardAvoidingView,
   LayoutAnimation,
@@ -23,7 +24,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
+import { useOnboarding, useMeasure } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -118,21 +119,12 @@ export default function DrillEditorScreen() {
   const toolsHeaderRef = useRef<View>(null);
   const propsHeaderRef = useRef<View>(null);
   const detailsHeaderRef = useRef<View>(null);
+  const sectionsWrapperRef = useRef<View>(null);
   const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen]);
   const propsHeaderLayout = useMeasure(propsHeaderRef, [showGuide, guideStep, propsOpen]);
   const detailsHeaderLayout = useMeasure(detailsHeaderRef, [showGuide, guideStep, detailsOpen]);
-  // Compute a combined bounding rect covering all three section headers
-  const combinedLayout = toolsHeaderLayout && propsHeaderLayout && detailsHeaderLayout ? {
-    x: Math.min(toolsHeaderLayout.x, propsHeaderLayout.x, detailsHeaderLayout.x),
-    y: Math.min(toolsHeaderLayout.y, propsHeaderLayout.y, detailsHeaderLayout.y),
-    width: Math.max(
-      toolsHeaderLayout.x + toolsHeaderLayout.width,
-      propsHeaderLayout.x + propsHeaderLayout.width,
-      detailsHeaderLayout.x + detailsHeaderLayout.width,
-    ) - Math.min(toolsHeaderLayout.x, propsHeaderLayout.x, detailsHeaderLayout.x),
-    height: (detailsHeaderLayout.y + detailsHeaderLayout.height) -
-      Math.min(toolsHeaderLayout.y, propsHeaderLayout.y, detailsHeaderLayout.y),
-  } : null;
+  // Measure the wrapper around all three section groups (headers only when collapsed)
+  const sectionsLayout = useMeasure(sectionsWrapperRef, [showGuide, guideStep]);
 
   // Complete the guide once all three per-dropdown tips have been shown
   useEffect(() => {
@@ -292,50 +284,77 @@ export default function DrillEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Step 0: Blocking spotlight highlighting all three section headers with dimmed screen */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'create_drill' && guideStep === 0}
-        target={combinedLayout}
-        heading="Build your drill"
-        message="Tools — add players, cones, goals and arrows. Properties — change field type and element settings. Drill Details — name, category, and description. Tap any section to get started!"
-        tooltipPosition="above"
-        onTargetPress={() => { advanceGuide(); }}
-        onSkip={() => { advanceGuide(); }}
-        highlightRadius={12}
-      />
+      {/* Step 0: Dim overlay with cutout around sections — touches pass through */}
+      {showGuide && selectedGoal === 'create_drill' && guideStep === 0 && sectionsLayout && (() => {
+        const pad = 8;
+        const hl = { x: sectionsLayout.x - pad, y: sectionsLayout.y - pad, w: sectionsLayout.width + pad * 2, h: sectionsLayout.height + pad * 2 };
+        const scr = Dimensions.get('window');
+        return (
+          <>
+            <View style={{ position: 'absolute', top: 0, left: 0, right: 0, height: hl.y, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 998 }} pointerEvents="none" />
+            <View style={{ position: 'absolute', top: hl.y + hl.h, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 998 }} pointerEvents="none" />
+            <View style={{ position: 'absolute', top: hl.y, left: 0, width: hl.x, height: hl.h, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 998 }} pointerEvents="none" />
+            <View style={{ position: 'absolute', top: hl.y, left: hl.x + hl.w, right: 0, height: hl.h, backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 998 }} pointerEvents="none" />
+            <View style={{ position: 'absolute', top: hl.y - 2, left: hl.x - 2, width: hl.w + 4, height: hl.h + 4, borderRadius: 12, borderWidth: 2, borderColor: tc.primary, zIndex: 999 }} pointerEvents="none" />
+            <View style={[StyleSheet.absoluteFill, { zIndex: 1000 }]} pointerEvents="box-none">
+              <View style={{ position: 'absolute', bottom: scr.height - hl.y + 12, left: 0, right: 0, paddingHorizontal: spacing.md }} pointerEvents="box-none">
+                <View style={{ marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: tc.primary, backgroundColor: tc.card, gap: 4 }}>
+                  <Text style={{ fontSize: 16, fontWeight: '700', color: tc.foreground, paddingRight: spacing.lg }}>Build your drill</Text>
+                  <Text style={{ fontSize: 13, lineHeight: 19, color: tc.mutedForeground, paddingRight: spacing.lg }}>Tap any section below to start — Tools, Properties, or Drill Details.</Text>
+                  <TouchableOpacity onPress={() => advanceGuide()} hitSlop={12} style={{ position: 'absolute', top: 12, right: 12, padding: 2 }}>
+                    <X size={14} color={tc.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </>
+        );
+      })()}
 
-      {/* Non-blocking tip when Tools section is first opened */}
-      <SpotlightOverlay
-        visible={toolsTipVisible}
-        target={toolsHeaderLayout}
-        heading="Tools"
-        message="Add players, cones, goals, and movement arrows to build your drill diagram. Use the select tool to reposition elements."
-        tooltipPosition="above"
-        onSkip={() => { setToolsTipVisible(false); }}
-        nonBlocking
-      />
+      {/* Floating tip when Tools section is first opened — no border */}
+      {toolsTipVisible && toolsHeaderLayout && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="box-none">
+          <View style={{ position: 'absolute', bottom: Dimensions.get('window').height - toolsHeaderLayout.y + 12, left: 0, right: 0, paddingHorizontal: spacing.md }} pointerEvents="box-none">
+            <View style={{ marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: tc.primary, backgroundColor: tc.card, gap: 4 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: tc.foreground, paddingRight: spacing.lg }}>Tools</Text>
+              <Text style={{ fontSize: 13, lineHeight: 19, color: tc.mutedForeground, paddingRight: spacing.lg }}>Add players, cones, goals, and arrows to your diagram. Use select to reposition elements.</Text>
+              <TouchableOpacity onPress={dismissAllTips} hitSlop={12} style={{ position: 'absolute', top: 12, right: 12, padding: 2 }}>
+                <X size={14} color={tc.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
-      {/* Non-blocking tip when Properties section is first opened */}
-      <SpotlightOverlay
-        visible={propsTipVisible}
-        target={propsHeaderLayout}
-        heading="Properties"
-        message="Change field type, add boundaries, and customize elements. Select an element on the canvas first to see its options here."
-        tooltipPosition="above"
-        onSkip={() => { setPropsTipVisible(false); }}
-        nonBlocking
-      />
+      {/* Floating tip when Properties section is first opened — no border */}
+      {propsTipVisible && propsHeaderLayout && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="box-none">
+          <View style={{ position: 'absolute', bottom: Dimensions.get('window').height - propsHeaderLayout.y + 12, left: 0, right: 0, paddingHorizontal: spacing.md }} pointerEvents="box-none">
+            <View style={{ marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: tc.primary, backgroundColor: tc.card, gap: 4 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: tc.foreground, paddingRight: spacing.lg }}>Properties</Text>
+              <Text style={{ fontSize: 13, lineHeight: 19, color: tc.mutedForeground, paddingRight: spacing.lg }}>Change field type and customize elements. Select something on the canvas to see its settings.</Text>
+              <TouchableOpacity onPress={dismissAllTips} hitSlop={12} style={{ position: 'absolute', top: 12, right: 12, padding: 2 }}>
+                <X size={14} color={tc.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
-      {/* Non-blocking tip when Drill Details section is first opened */}
-      <SpotlightOverlay
-        visible={detailsTipVisible}
-        target={detailsHeaderLayout}
-        heading="Drill Details"
-        message="Give your drill a name, choose a category and difficulty, and add coaching points, setup instructions and variations."
-        tooltipPosition="above"
-        onSkip={() => { setDetailsTipVisible(false); }}
-        nonBlocking
-      />
+      {/* Floating tip when Drill Details section is first opened — no border */}
+      {detailsTipVisible && detailsHeaderLayout && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="box-none">
+          <View style={{ position: 'absolute', bottom: Dimensions.get('window').height - detailsHeaderLayout.y + 12, left: 0, right: 0, paddingHorizontal: spacing.md }} pointerEvents="box-none">
+            <View style={{ marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: tc.primary, backgroundColor: tc.card, gap: 4 }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: tc.foreground, paddingRight: spacing.lg }}>Drill Details</Text>
+              <Text style={{ fontSize: 13, lineHeight: 19, color: tc.mutedForeground, paddingRight: spacing.lg }}>Name your drill, set category and difficulty, and add coaching notes.</Text>
+              <TouchableOpacity onPress={dismissAllTips} hitSlop={12} style={{ position: 'absolute', top: 12, right: 12, padding: 2 }}>
+                <X size={14} color={tc.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -344,6 +363,7 @@ export default function DrillEditorScreen() {
           contentContainerStyle={e.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          onTouchStart={dismissAllTips}
           onScrollBeginDrag={dismissAllTips}
         >
           {/* Canvas */}
@@ -355,12 +375,16 @@ export default function DrillEditorScreen() {
             onDragStateChange={handleDragStateChange}
           />
 
+          {/* All dropdown sections — wrapped for step 0 measurement */}
+          <View ref={sectionsWrapperRef} collapsable={false}>
+
           {/* Tools - collapsible */}
           <TouchableOpacity ref={toolsHeaderRef} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => {
             const willOpen = !toolsOpen;
             dismissAllTips();
             toggle(setToolsOpen);
-            if (willOpen && showGuide && selectedGoal === 'create_drill' && guideStep >= 1 && !toolsTipShown) {
+            if (showGuide && selectedGoal === 'create_drill' && guideStep === 0) advanceGuide();
+            if (willOpen && showGuide && selectedGoal === 'create_drill' && !toolsTipShown) {
               setToolsTipShown(true);
               setToolsTipVisible(true);
             }
@@ -381,7 +405,8 @@ export default function DrillEditorScreen() {
             const willOpen = !propsOpen;
             dismissAllTips();
             toggle(setPropsOpen);
-            if (willOpen && showGuide && selectedGoal === 'create_drill' && guideStep >= 1 && !propsTipShown) {
+            if (showGuide && selectedGoal === 'create_drill' && guideStep === 0) advanceGuide();
+            if (willOpen && showGuide && selectedGoal === 'create_drill' && !propsTipShown) {
               setPropsTipShown(true);
               setPropsTipVisible(true);
             }
@@ -402,7 +427,8 @@ export default function DrillEditorScreen() {
             const willOpen = !detailsOpen;
             dismissAllTips();
             toggle(setDetailsOpen);
-            if (willOpen && showGuide && selectedGoal === 'create_drill' && guideStep >= 1 && !detailsTipShown) {
+            if (showGuide && selectedGoal === 'create_drill' && guideStep === 0) advanceGuide();
+            if (willOpen && showGuide && selectedGoal === 'create_drill' && !detailsTipShown) {
               setDetailsTipShown(true);
               setDetailsTipVisible(true);
             }
@@ -449,6 +475,8 @@ export default function DrillEditorScreen() {
               </View>
             </View>
           )}
+
+          </View>{/* end sectionsWrapperRef */}
 
           {/* Bottom actions */}
           <View style={e.bottomActions}>
