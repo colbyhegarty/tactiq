@@ -23,7 +23,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, InlineTip, useMeasure } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -54,26 +54,12 @@ export default function DrillEditorScreen() {
   const [snapToGrid, setSnapToGrid] = useState(true);
   const [dropdownField, setDropdownField] = useState<'category' | 'difficulty' | null>(null);
   const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
-  const toolsHeaderRef = useRef<View>(null);
-  const propsHeaderRef = useRef<View>(null);
-  const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep]);
-  const propsHeaderLayout = useMeasure(propsHeaderRef, [showGuide, guideStep]);
-  // Track first-time opening of each section for inline tips
+
+  // Track first-time opening of each section for floating tips
   const [toolsTipShown, setToolsTipShown] = useState(false);
   const [propsTipShown, setPropsTipShown] = useState(false);
   const [toolsTipVisible, setToolsTipVisible] = useState(false);
   const [propsTipVisible, setPropsTipVisible] = useState(false);
-  // Compute a combined bounding rect covering both Tools and Properties headers
-  const combinedLayout = toolsHeaderLayout && propsHeaderLayout ? {
-    x: Math.min(toolsHeaderLayout.x, propsHeaderLayout.x),
-    y: Math.min(toolsHeaderLayout.y, propsHeaderLayout.y),
-    width: Math.max(
-      toolsHeaderLayout.x + toolsHeaderLayout.width,
-      propsHeaderLayout.x + propsHeaderLayout.width,
-    ) - Math.min(toolsHeaderLayout.x, propsHeaderLayout.x),
-    height: (propsHeaderLayout.y + propsHeaderLayout.height) -
-      Math.min(toolsHeaderLayout.y, propsHeaderLayout.y),
-  } : null;
 
   // Undo history — stores previous diagram states (max 50)
   const undoStack = useRef<DiagramData[]>([]);
@@ -125,6 +111,23 @@ export default function DrillEditorScreen() {
   const [detailsOpen, setDetailsOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const [canScroll, setCanScroll] = useState(true);
+
+  // Refs for nonBlocking spotlight targets
+  const toolsHeaderRef = useRef<View>(null);
+  const propsHeaderRef = useRef<View>(null);
+  const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen]);
+  const propsHeaderLayout = useMeasure(propsHeaderRef, [showGuide, guideStep, propsOpen]);
+  // Compute a combined bounding rect covering both Tools and Properties headers
+  const combinedLayout = toolsHeaderLayout && propsHeaderLayout ? {
+    x: Math.min(toolsHeaderLayout.x, propsHeaderLayout.x),
+    y: Math.min(toolsHeaderLayout.y, propsHeaderLayout.y),
+    width: Math.max(
+      toolsHeaderLayout.x + toolsHeaderLayout.width,
+      propsHeaderLayout.x + propsHeaderLayout.width,
+    ) - Math.min(toolsHeaderLayout.x, propsHeaderLayout.x),
+    height: (propsHeaderLayout.y + propsHeaderLayout.height) -
+      Math.min(toolsHeaderLayout.y, propsHeaderLayout.y),
+  } : null;
 
   // Load categories
   useEffect(() => { fetchFilterOptions().then(o => setCategories(o.categories)); }, []);
@@ -268,18 +271,44 @@ export default function DrillEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Spotlight step 0: Highlight both Tools AND Properties headers */}
+      {/* Spotlight step 0: Highlight both Tools AND Properties headers — nonBlocking so user can interact */}
       <SpotlightOverlay
         visible={showGuide && selectedGoal === 'create_drill' && guideStep === 0}
         target={combinedLayout}
         heading="Build your drill"
         message="Use the Tools and Properties panels below to add players, cones, goals, and customize your drill diagram. Tap either one to get started."
-        onTargetPress={() => {
-          advanceGuide();
-        }}
         tooltipPosition="above"
-        onSkip={completeGuide}
+        onSkip={() => { advanceGuide(); }}
         highlightRadius={12}
+        nonBlocking
+      />
+
+      {/* Non-blocking tip when Tools section is first opened */}
+      <SpotlightOverlay
+        visible={toolsTipVisible}
+        target={toolsHeaderLayout}
+        heading="Your drill-building tools"
+        message="Add players, cones, goals, and movement arrows to your drill diagram. Use the select tool to move and edit elements."
+        tooltipPosition="below"
+        onSkip={() => {
+          setToolsTipVisible(false);
+          if (propsTipShown) completeGuide();
+        }}
+        nonBlocking
+      />
+
+      {/* Non-blocking tip when Properties section is first opened */}
+      <SpotlightOverlay
+        visible={propsTipVisible}
+        target={propsHeaderLayout}
+        heading="Customize your drill"
+        message="Change field type, add boundaries, and customize elements. Select an element on the canvas to see its properties here."
+        tooltipPosition="below"
+        onSkip={() => {
+          setPropsTipVisible(false);
+          if (toolsTipShown) completeGuide();
+        }}
+        nonBlocking
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -313,15 +342,6 @@ export default function DrillEditorScreen() {
           </TouchableOpacity>
           {toolsOpen && (
             <View style={e.sectionBody}>
-              <InlineTip
-                visible={toolsTipVisible}
-                heading="Your drill-building tools"
-                message="Add players, cones, goals, and movement arrows to your drill diagram. Use the select tool to move and edit elements."
-                onDismiss={() => {
-                  setToolsTipVisible(false);
-                  if (propsTipShown) completeGuide();
-                }}
-              />
               <View style={e.sectionBodyInner}>
                 <ToolsPanel activeTool={tool} onToolChange={setTool} pendingActionFrom={pendingActionFrom} snapToGrid={snapToGrid} onSnapToggle={() => setSnapToGrid(v => !v)} canUndo={undoStack.current.length > 0} onUndo={handleUndo} />
               </View>
@@ -342,15 +362,6 @@ export default function DrillEditorScreen() {
           </TouchableOpacity>
           {propsOpen && (
             <View style={e.sectionBody}>
-              <InlineTip
-                visible={propsTipVisible}
-                heading="Customize your drill"
-                message="Change field type, add boundaries, and customize elements. Select an element on the canvas to see its properties here."
-                onDismiss={() => {
-                  setPropsTipVisible(false);
-                  if (toolsTipShown) completeGuide();
-                }}
-              />
               <View style={e.sectionBodyInner}>
                 <PropertiesPanel diagram={diagram} selectedEntity={selectedEntity} onDiagramChange={setDiagram} onDeleteSelected={handleDeleteSelected} />
               </View>
