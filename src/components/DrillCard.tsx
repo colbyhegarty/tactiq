@@ -119,7 +119,7 @@ function DrillCardInner({
       {/* Diagram Image */}
       <View style={styles.imageContainer}>
         <Pressable
-          style={styles.imageContainer}
+          style={StyleSheet.absoluteFill}
           onPress={() => {
             if (isLocked) {
               onPress(drill);

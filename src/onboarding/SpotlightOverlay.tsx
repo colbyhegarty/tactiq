@@ -49,6 +49,8 @@ interface SpotlightOverlayProps {
   onSkip?: () => void;
   /** Border radius for the highlight cutout */
   highlightRadius?: number;
+  /** Non-blocking mode: no Modal, no dark overlay. Floats on top but lets user interact with UI underneath. */
+  nonBlocking?: boolean;
 }
 
 /**
@@ -99,6 +101,7 @@ export function SpotlightOverlay({
   onButtonPress,
   onSkip,
   highlightRadius = HIGHLIGHT_BORDER_RADIUS,
+  nonBlocking = false,
 }: SpotlightOverlayProps) {
   const { colors } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -149,6 +152,107 @@ export function SpotlightOverlay({
     ? 'rgba(255,255,255,0.85)'
     : colors.mutedForeground;
 
+  // ── Shared tooltip card ──────────────────────────────────────────
+  const tooltipCard = (
+    <View
+      style={[
+        s.tooltipContainer,
+        hl
+          ? resolvedPosition === 'above'
+            ? { position: 'absolute', bottom: screen.height - hl.y + 12, left: 0, right: 0 }
+            : { position: 'absolute', top: tooltipTop, left: 0, right: 0 }
+          : { flex: 1, justifyContent: 'center' },
+      ]}
+      pointerEvents="box-none"
+    >
+      <Animated.View
+        style={[
+          s.tooltip,
+          {
+            backgroundColor: bgColor,
+            borderColor: borderColor,
+            transform: [{ scale: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }],
+          },
+        ]}
+      >
+        {heading && (
+          <Text style={[s.heading, { color: textColor }]}>{heading}</Text>
+        )}
+        <Text style={[s.message, { color: heading ? subTextColor : textColor }]}>
+          {message}
+        </Text>
+
+        {buttonText && onButtonPress && (
+          <TouchableOpacity
+            style={[
+              s.button,
+              {
+                backgroundColor: celebrate
+                  ? 'rgba(255,255,255,0.2)'
+                  : colors.primary,
+              },
+            ]}
+            onPress={onButtonPress}
+            activeOpacity={0.7}
+          >
+            <Text
+              style={[
+                s.buttonText,
+                { color: colors.primaryForeground },
+              ]}
+            >
+              {buttonText}
+            </Text>
+          </TouchableOpacity>
+        )}
+
+        {onSkip && (
+          <TouchableOpacity onPress={onSkip} hitSlop={12} style={s.close}>
+            <X
+              size={14}
+              color={
+                celebrate
+                  ? 'rgba(255,255,255,0.6)'
+                  : colors.mutedForeground
+              }
+            />
+          </TouchableOpacity>
+        )}
+      </Animated.View>
+    </View>
+  );
+
+  // ── Non-blocking mode: no Modal, no dark overlay ───────────────
+  if (nonBlocking) {
+    if (!visible) return null;
+    return (
+      <Animated.View
+        style={[StyleSheet.absoluteFill, { opacity: fadeAnim, zIndex: 999 }]}
+        pointerEvents="box-none"
+      >
+        {/* Highlight border around target */}
+        {hl && (
+          <View
+            style={[
+              s.highlightBorder,
+              {
+                top: hl.y - 2,
+                left: hl.x - 2,
+                width: hl.w + 4,
+                height: hl.h + 4,
+                borderRadius: highlightRadius,
+                borderColor: colors.primary,
+              },
+            ]}
+            pointerEvents="none"
+          />
+        )}
+        {tooltipCard}
+      </Animated.View>
+    );
+  }
+
+  // ── Standard blocking mode with Modal ──────────────────────────
   return (
     <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onSkip}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
@@ -235,73 +339,7 @@ export function SpotlightOverlay({
           </TouchableWithoutFeedback>
         )}
 
-        {/* Tooltip card */}
-        <View
-          style={[
-            s.tooltipContainer,
-            hl
-              ? resolvedPosition === 'above'
-                ? { position: 'absolute', bottom: screen.height - hl.y + 12, left: 0, right: 0 }
-                : { position: 'absolute', top: tooltipTop, left: 0, right: 0 }
-              : { flex: 1, justifyContent: 'center' },
-          ]}
-          pointerEvents="box-none"
-        >
-          <Animated.View
-            style={[
-              s.tooltip,
-              {
-                backgroundColor: bgColor,
-                borderColor: borderColor,
-                transform: [{ scale: fadeAnim.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1] }) }],
-              },
-            ]}
-          >
-            {heading && (
-              <Text style={[s.heading, { color: textColor }]}>{heading}</Text>
-            )}
-            <Text style={[s.message, { color: heading ? subTextColor : textColor }]}>
-              {message}
-            </Text>
-
-            {buttonText && onButtonPress && (
-              <TouchableOpacity
-                style={[
-                  s.button,
-                  {
-                    backgroundColor: celebrate
-                      ? 'rgba(255,255,255,0.2)'
-                      : colors.primary,
-                  },
-                ]}
-                onPress={onButtonPress}
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={[
-                    s.buttonText,
-                    { color: colors.primaryForeground },
-                  ]}
-                >
-                  {buttonText}
-                </Text>
-              </TouchableOpacity>
-            )}
-
-            {onSkip && (
-              <TouchableOpacity onPress={onSkip} hitSlop={12} style={s.close}>
-                <X
-                  size={14}
-                  color={
-                    celebrate
-                      ? 'rgba(255,255,255,0.6)'
-                      : colors.mutedForeground
-                  }
-                />
-              </TouchableOpacity>
-            )}
-          </Animated.View>
-        </View>
+        {tooltipCard}
       </Animated.View>
     </Modal>
   );

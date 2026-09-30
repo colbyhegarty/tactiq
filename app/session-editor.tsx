@@ -37,7 +37,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { track } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, InlineTip } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
@@ -584,6 +584,12 @@ export default function SessionEditorScreen() {
     }
   }, [showGuide, selectedGoal, guideStep]);
 
+  // Refs for non-blocking spotlight targets
+  const titleFieldRef = useRef<View>(null);
+  const addActivityRef = useRef<View>(null);
+  const titleLayout = useMeasure(titleFieldRef, [showGuide, guideStep]);
+  const addActivityLayout = useMeasure(addActivityRef, [showGuide, guideStep, addDrillTipReady]);
+
   useEffect(() => {
     if (!isNew && params.id) {
       (async () => {
@@ -664,7 +670,27 @@ export default function SessionEditorScreen() {
         <Text style={s.headerTitle}>{isNew ? 'New Session' : 'Edit Session'}</Text>
       </View>
 
-      {/* Step 2 Add Activity tip is rendered inline near the button — see ACTIVITIES section below */}
+      {/* Non-blocking spotlight step 1: Name your session — floats on top */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew}
+        target={titleLayout}
+        heading="Name your session"
+        message="Type a name for your practice plan in the title field."
+        tooltipPosition="below"
+        onSkip={completeGuide}
+        nonBlocking
+      />
+
+      {/* Non-blocking spotlight step 2: Add a drill — floats on top */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2 && addDrillTipReady}
+        target={addActivityLayout}
+        heading="Add a drill"
+        message="Tap the button below to add your first drill to this session."
+        tooltipPosition="above"
+        onSkip={completeGuide}
+        nonBlocking
+      />
 
       {/* Spotlight step 3: Congrats — no target, centered */}
       <SpotlightOverlay
@@ -682,14 +708,7 @@ export default function SessionEditorScreen() {
           {/* Session Details */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>SESSION DETAILS</Text>
-            <View style={s.fieldGroup}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={tc.mutedForeground} /></View>
-            {/* Inline step 1: Name your session tip — non-modal so user can type directly */}
-            <InlineTip
-              visible={showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew}
-              heading="Name your session"
-              message="Type a name for your practice plan in the title field above."
-              onDismiss={completeGuide}
-            />
+            <View style={s.fieldGroup} ref={titleFieldRef} collapsable={false}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={tc.mutedForeground} /></View>
             <View style={s.fieldGroup}><Text style={s.label}>Team / Group</Text><TextInput style={s.input} value={session.team_name} onChangeText={v => setSession({...session, team_name: v})} placeholder="e.g., U12 Boys" placeholderTextColor={tc.mutedForeground} /></View>
             <View style={s.row}>
               <View style={[s.fieldGroup, { flex: 1 }]}>
@@ -726,14 +745,7 @@ export default function SessionEditorScreen() {
                   isFirst={i === 0} isLast={i === activities.length - 1} />
               ))
             )}
-            {/* Inline step 2: Add a drill tip — non-modal so user can tap the button */}
-            <InlineTip
-              visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2 && addDrillTipReady}
-              heading="Add a drill"
-              message="Tap the button below to add your first drill to this session."
-              onDismiss={completeGuide}
-            />
-            <TouchableOpacity style={s.addDashed} onPress={() => { setEditingActivity(null); setShowAddModal(true); }}>
+            <TouchableOpacity ref={addActivityRef} collapsable={false} style={s.addDashed} onPress={() => { setEditingActivity(null); setShowAddModal(true); }}>
               <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
             </TouchableOpacity>
           </View>
