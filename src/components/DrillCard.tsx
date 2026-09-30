@@ -119,7 +119,7 @@ function DrillCardInner({
       {/* Diagram Image */}
       <View style={styles.imageContainer}>
         <Pressable
-          style={{ flex: 1 }}
+          style={styles.imageContainer}
           onPress={() => {
             if (isLocked) {
               onPress(drill);
