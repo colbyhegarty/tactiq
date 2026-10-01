@@ -21,7 +21,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Keyboard,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -563,32 +562,11 @@ export default function SessionEditorScreen() {
   const [saving, setSaving] = useState(false);
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
-  const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
-  // Auto-advance from step 1 (title) to step 2 when user starts typing a title
-  useEffect(() => {
-    if (showGuide && selectedGoal === 'build_practice' && guideStep === 1 && session.title.trim().length > 0) {
-      advanceGuide();
-    }
-  }, [session.title, showGuide, selectedGoal, guideStep]);
-
-  // Show the Add Activity tip once the keyboard is dismissed (user finished typing title)
-  const [addDrillTipReady, setAddDrillTipReady] = useState(false);
-  useEffect(() => {
-    if (showGuide && selectedGoal === 'build_practice' && guideStep === 2) {
-      const sub = Keyboard.addListener('keyboardDidHide', () => {
-        setAddDrillTipReady(true);
-      });
-      return () => sub.remove();
-    } else {
-      setAddDrillTipReady(false);
-    }
-  }, [showGuide, selectedGoal, guideStep]);
+  const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide, dismissCoachMark, setOnboardingSessionId } = useOnboarding();
 
   // Refs for non-blocking spotlight targets
-  const titleFieldRef = useRef<View>(null);
   const addActivityRef = useRef<View>(null);
-  const titleLayout = useMeasure(titleFieldRef, [showGuide, guideStep]);
-  const addActivityLayout = useMeasure(addActivityRef, [showGuide, guideStep, addDrillTipReady]);
+  const addActivityLayout = useMeasure(addActivityRef, [showGuide, guideStep]);
 
   useEffect(() => {
     if (!isNew && params.id) {
@@ -631,10 +609,30 @@ export default function SessionEditorScreen() {
       track('drill_added_to_session', { drill_name: activity.drill_name || activity.title || 'Unknown', source });
 
       // Advance guide to congrats step when first drill is added
-      if (isFirstDrill && showGuide && selectedGoal === 'build_practice' && guideStep === 2) {
+      if (isFirstDrill && showGuide && selectedGoal === 'build_practice' && guideStep === 1) {
         advanceGuide();
       }
     }
+  };
+
+  const handleAddActivityPress = async () => {
+    if (showGuide && selectedGoal === 'build_practice' && guideStep === 1) {
+      // Bypass the Add Activity chooser — save session first, then navigate to Library
+      let sessionId = existingId;
+      if (!sessionId) {
+        const data = { ...session, equipment, activities };
+        const created = await saveSession(data);
+        sessionId = created.id;
+        setExistingId(sessionId);
+      } else {
+        await updateSession(sessionId, { ...session, equipment, activities });
+      }
+      setOnboardingSessionId(sessionId);
+      router.navigate('/');
+      return;
+    }
+    setEditingActivity(null);
+    setShowAddModal(true);
   };
 
   const handleSave = async () => {
@@ -670,33 +668,22 @@ export default function SessionEditorScreen() {
         <Text style={s.headerTitle}>{isNew ? 'New Session' : 'Edit Session'}</Text>
       </View>
 
-      {/* Non-blocking spotlight step 1: Name your session — floats on top */}
+      {/* Non-blocking spotlight step 1: Add your first drill */}
       <SpotlightOverlay
         visible={showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew}
-        target={titleLayout}
-        heading="Name your session"
-        message="Type a name for your practice plan in the title field."
-        tooltipPosition="below"
-        onSkip={completeGuide}
-        nonBlocking
-      />
-
-      {/* Non-blocking spotlight step 2: Add a drill — floats on top */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2 && addDrillTipReady}
         target={addActivityLayout}
-        heading="Add a drill"
-        message="Tap the button below to add your first drill to this session."
+        heading="Add your first drill"
+        message="Let's find a drill for your practice."
         tooltipPosition="above"
-        onSkip={completeGuide}
+        onSkip={dismissCoachMark}
         nonBlocking
       />
 
-      {/* Spotlight step 3: Congrats — no target, centered */}
+      {/* Spotlight step 2: Success — no target, centered */}
       <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 3}
-        heading="Nice work!"
-        message="You added your first drill. Keep adding more to build out your practice, then tap Save when you're done."
+        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2}
+        heading="Your practice is taking shape!"
+        message="You've added your first drill. Keep adding drills, or save when you're ready."
         celebrate
         buttonText="Got it"
         onButtonPress={completeGuide}
@@ -708,7 +695,7 @@ export default function SessionEditorScreen() {
           {/* Session Details */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>SESSION DETAILS</Text>
-            <View style={s.fieldGroup} ref={titleFieldRef} collapsable={false}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={tc.mutedForeground} /></View>
+            <View style={s.fieldGroup}><Text style={s.label}>Title</Text><TextInput style={s.input} value={session.title} onChangeText={v => setSession({...session, title: v})} placeholder="e.g., Tuesday U12 Training" placeholderTextColor={tc.mutedForeground} /></View>
             <View style={s.fieldGroup}><Text style={s.label}>Team / Group</Text><TextInput style={s.input} value={session.team_name} onChangeText={v => setSession({...session, team_name: v})} placeholder="e.g., U12 Boys" placeholderTextColor={tc.mutedForeground} /></View>
             <View style={s.row}>
               <View style={[s.fieldGroup, { flex: 1 }]}>
@@ -745,7 +732,7 @@ export default function SessionEditorScreen() {
                   isFirst={i === 0} isLast={i === activities.length - 1} />
               ))
             )}
-            <TouchableOpacity ref={addActivityRef} collapsable={false} style={s.addDashed} onPress={() => { setEditingActivity(null); setShowAddModal(true); }}>
+            <TouchableOpacity ref={addActivityRef} collapsable={false} style={s.addDashed} onPress={handleAddActivityPress}>
               <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
             </TouchableOpacity>
           </View>

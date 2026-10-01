@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { ChevronLeft, ChevronRight, LayoutGrid, LayoutList, Library } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, LayoutGrid, LayoutList, Library, Search, Target } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
@@ -34,7 +34,7 @@ import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillC
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
 import { PaywallModal, PreviewBanner, usePaywallGate, useSubscription, isDrillFree } from '../../src/subscription';
 import { MAX_PREVIEW_VIEWS } from '../../src/subscription/proPreview';
-import { useOnboarding, SpotlightOverlay, useMeasure } from '../../src/onboarding';
+import { useOnboarding, SpotlightOverlay, CoachCard, useMeasure } from '../../src/onboarding';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -47,7 +47,7 @@ export default function LibraryScreen() {
   const styles = useMemo(() => create_styles(tc), [tc]);
   const { subscription, isDrillUnlocked, tryPreviewDrill, previewRemaining, previewState } = useSubscription();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
-  const { selectedGoal, showGuide, completeGuide } = useOnboarding();
+  const { selectedGoal, showGuide, guideStep, completeGuide, dismissCoachMark, onboardingSessionId, proPreviewExtended } = useOnboarding();
   const filterToggleRef = useRef<View>(null);
   const filterToggleFn = useRef<(() => void) | null>(null);
   const filterLayout = useMeasure(filterToggleRef, [showGuide]);
@@ -225,6 +225,11 @@ export default function LibraryScreen() {
   }, []);
 
   const handleViewDrill = useCallback(async (drill: Drill) => {
+    // Complete find_drills guide when first drill is opened
+    if (showGuide && selectedGoal === 'find_drills') {
+      completeGuide();
+    }
+
     // Pro users always get full access
     if (subscription.isProUser) {
       await loadAndShowDrill(drill);
@@ -234,6 +239,20 @@ export default function LibraryScreen() {
     // Free drills always accessible without consuming a preview
     if (isDrillFree(drill.id)) {
       await loadAndShowDrill(drill);
+      return;
+    }
+
+    // During active Build Practice onboarding, extend pro preview (bypass exhaustion)
+    if (proPreviewExtended) {
+      if (!previewState.exhausted) {
+        const result = await tryPreviewDrill(drill.id);
+        if (result.allowed) {
+          await loadAndShowDrill(drill, true);
+          return;
+        }
+      }
+      // Even if exhausted, allow viewing during onboarding
+      await loadAndShowDrill(drill, true);
       return;
     }
 
@@ -249,7 +268,7 @@ export default function LibraryScreen() {
       if (result.allowed) {
         // Show countdown banner only after 2nd unique preview
         const totalViewed = MAX_PREVIEW_VIEWS - result.remaining;
-        if (totalViewed >= 2) {
+        if (totalViewed >= 2 && !proPreviewExtended) {
           setPreviewBannerRemaining(result.remaining);
           setShowPreviewBanner(true);
           setTimeout(() => setShowPreviewBanner(false), 3000);
@@ -262,7 +281,7 @@ export default function LibraryScreen() {
     // Preview exhausted — show paywall
     track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
     await gate('view_locked_drill');
-  }, [subscription.isProUser, previewState, tryPreviewDrill, gate, loadAndShowDrill]);
+  }, [subscription.isProUser, previewState, tryPreviewDrill, gate, loadAndShowDrill, showGuide, selectedGoal, completeGuide, proPreviewExtended]);
 
   const handleSaveDrill = useCallback(async (drill: Drill) => {
     const currentlySaved = savedState[drill.id] ?? (await isDrillSaved(drill.id));
@@ -447,11 +466,7 @@ export default function LibraryScreen() {
           isLoading={isLoading}
           filterToggleRef={filterToggleRef}
           toggleRef={filterToggleFn}
-          onFiltersToggle={(open) => {
-            if (open && showGuide && selectedGoal === 'find_drills') {
-              completeGuide();
-            }
-          }}
+          onFiltersToggle={() => {}}
         />
         <View style={styles.viewToggleRow}>
           <View style={{ flex: 1 }} />
@@ -472,26 +487,37 @@ export default function LibraryScreen() {
         </View>
       </View>
 
-      {/* Spotlight overlay — highlight filter toggle */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'find_drills'}
-        target={filterLayout}
-        heading="Use filters to find drills"
-        message="Tap the filter bar to search by category, age group, difficulty, and more."
-        onTargetPress={() => {
-          filterToggleFn.current?.();
-        }}
-        tooltipPosition="below"
-        onSkip={completeGuide}
-      />
+      {/* CoachCard — find_drills hint */}
+      {showGuide && selectedGoal === 'find_drills' && (
+        <View style={{ paddingHorizontal: spacing.md }}>
+          <CoachCard
+            icon={Search}
+            title="Find the right drill"
+            description="Browse the library, search, or use filters to discover drills. Tap any drill to see the details."
+            onDismiss={dismissCoachMark}
+          />
+        </View>
+      )}
 
-      {/* Preview remaining banner */}
-      {showPreviewBanner && (
+      {/* CoachCard — build_practice Library hint */}
+      {showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId && (
+        <View style={{ paddingHorizontal: spacing.md }}>
+          <CoachCard
+            icon={Target}
+            title="Choose a drill for your practice"
+            description="Browse or search for a drill, then tap it to see details and add it to your session."
+            onDismiss={dismissCoachMark}
+          />
+        </View>
+      )}
+
+      {/* Preview remaining banner — suppressed during onboarding pro preview extension */}
+      {showPreviewBanner && !proPreviewExtended && (
         <PreviewBanner remaining={previewBannerRemaining} total={MAX_PREVIEW_VIEWS} />
       )}
 
       {/* Preview status hint — show after 2nd unique Pro drill preview */}
-      {!previewState.exhausted && previewState.viewedDrillIds.length >= 2 && !showPreviewBanner && (
+      {!previewState.exhausted && previewState.viewedDrillIds.length >= 2 && !showPreviewBanner && !proPreviewExtended && (
         <PreviewBanner remaining={previewRemaining} total={MAX_PREVIEW_VIEWS} />
       )}
 

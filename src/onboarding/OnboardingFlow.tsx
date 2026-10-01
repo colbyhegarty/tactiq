@@ -51,7 +51,7 @@ const GOALS: GoalOption[] = [
   {
     key: 'explore',
     icon: Compass,
-    title: 'Just explore',
+    title: 'Explore on my own',
     subtitle: "Look around and see what's here",
   },
 ];

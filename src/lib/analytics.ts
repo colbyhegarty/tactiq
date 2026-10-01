@@ -89,12 +89,17 @@ type AnalyticsEvents = {
   onboarding_skipped: { step: number };
   onboarding_reset: {};
   onboarding_goal_selected: { goal: string };
-  onboarding_guide_dismissed: { goal: string | null };
+  onboarding_guide_step: { goal: string | null; step: number };
+  onboarding_guide_completed: { goal: string | null; activation_version: number };
+  onboarding_guide_suspended: { goal: string | null; step: number; reason: string };
+  onboarding_guide_dismissed: { goal: string | null; step: number };
+  onboarding_guide_resumed: { goal: string | null; step: number };
 
   // Pro drill preview
   pro_drill_preview_started: {};
   pro_drill_preview_viewed: { drill_id: string; preview_number: number; remaining: number };
   pro_drill_preview_exhausted: { total_previewed: number };
+  pro_preview_extended: { goal: string | null; views_at_extension: number };
 
   // Settings
   theme_toggled: { theme: 'light' | 'dark' };

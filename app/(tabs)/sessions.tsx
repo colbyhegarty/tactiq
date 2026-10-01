@@ -145,7 +145,7 @@ export default function SessionsScreen() {
   const [calendarOpen, setCalendarOpen] = useState(false);
   const router = useRouter();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
-  const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide } = useOnboarding();
+  const { selectedGoal, showGuide, guideStep, advanceGuide, dismissCoachMark } = useOnboarding();
   const createBtnRef = useRef<View>(null);
   const createBtnLayout = useMeasure(createBtnRef, [showGuide, guideStep]);
 
@@ -289,7 +289,7 @@ export default function SessionsScreen() {
           handleCreateSession();
         }}
         tooltipPosition="below"
-        onSkip={completeGuide}
+        onSkip={dismissCoachMark}
       />
 
       {/* Inline Calendar */}

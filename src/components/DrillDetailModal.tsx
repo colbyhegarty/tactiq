@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
 import {
   Bookmark, BookmarkCheck,
   CalendarPlus,
@@ -9,6 +10,7 @@ import {
   Lightbulb,
   Play,
   Plus,
+  PlusCircle,
   RefreshCw,
   Sparkles,
   Users,
@@ -27,8 +29,10 @@ import {
 } from 'react-native';
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { track } from '../lib/analytics';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
-import { generateActivityId, getSessions, saveSession, updateSession } from '../lib/sessionStorage';
+import { generateActivityId, getSession, getSessions, saveSession, updateSession } from '../lib/sessionStorage';
+import { useOnboarding, CoachCard } from '../onboarding';
 import { borderRadius, spacing } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { Drill } from '../types/drill';
@@ -251,11 +255,21 @@ function create_ats(tc: any, bottomInset: number = 0) { return StyleSheet.create
 export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSave, onUseAsTemplate, onAddToSession }: DrillDetailModalProps) {
   const { colors: tc } = useTheme();
   const s = create_s(tc);
+  const router = useRouter();
+  const { showGuide, selectedGoal, onboardingSessionId, advanceGuide, dismissCoachMark } = useOnboarding();
   const [viewMode, setViewMode] = useState<'static' | 'animated'>('animated');
   const [activeTab, setActiveTab] = useState<TabKey>('setup');
   const [addToSessionVisible, setAddToSessionVisible] = useState(false);
+  const [coachHintDismissed, setCoachHintDismissed] = useState(false);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
+
+  const isBuildPractice = showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId;
+
+  // Reset coach hint when drill changes
+  useEffect(() => {
+    setCoachHintDismissed(false);
+  }, [drill?.id]);
 
   useEffect(() => {
     if (isOpen) {
@@ -309,6 +323,45 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
       case 'variations': return formatText(drill.variations);
       case 'coaching': return formatText(drill.coaching_points);
     }
+  };
+
+  const handleAddToSession = async () => {
+    if (isBuildPractice && drill) {
+      // During Build Practice onboarding, add directly to the onboarding session
+      const session = await getSession(onboardingSessionId!);
+      if (session) {
+        const isCustom = drill.source === 'custom';
+        const activity: SessionActivity = {
+          id: generateActivityId(),
+          sort_order: session.activities.length,
+          activity_type: isCustom ? 'custom_drill' : 'library_drill',
+          library_drill_id: isCustom ? null : drill.id,
+          custom_drill_id: isCustom ? drill.id : null,
+          title: '',
+          description: '',
+          duration_minutes: typeof drill.duration === 'number' ? drill.duration : parseInt(String(drill.duration || '15')) || 15,
+          activity_notes: '',
+          drill_name: drill.name,
+          drill_svg_url: drill.svg_url,
+          drill_category: drill.category,
+          drill_difficulty: drill.difficulty,
+          drill_player_count: drill.player_count_display || String(drill.player_count || ''),
+          drill_diagram_data: isCustom ? drill.raw_diagram_data : undefined,
+          drill_setup: isCustom ? drill.setup : undefined,
+          drill_instructions: isCustom ? drill.instructions : undefined,
+        };
+        const updated = [...session.activities, activity];
+        await updateSession(onboardingSessionId!, { activities: updated });
+        track('drill_added_to_session', { drill_name: drill.name, source: 'library' });
+      }
+      advanceGuide(); // step 1 → 2
+      handleClose();
+      setTimeout(() => {
+        router.push({ pathname: '/session-editor', params: { id: onboardingSessionId! } });
+      }, 350);
+      return;
+    }
+    setAddToSessionVisible(true);
   };
 
   return (
@@ -407,6 +460,16 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
               </View>
             )}
 
+            {/* Build Practice coach hint */}
+            {isBuildPractice && !coachHintDismissed && (
+              <CoachCard
+                icon={PlusCircle}
+                title="Add this drill to your practice"
+                description="Tap the button below to add this drill to your session."
+                onDismiss={() => setCoachHintDismissed(true)}
+              />
+            )}
+
             {/* Actions */}
             <View style={s.actionButtons}>
               {onSave && (
@@ -422,9 +485,9 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
                 </TouchableOpacity>
               )}
             </View>
-            <TouchableOpacity style={s.addToSessionBtn} onPress={() => setAddToSessionVisible(true)}>
+            <TouchableOpacity style={s.addToSessionBtn} onPress={handleAddToSession}>
               <CalendarPlus size={18} color={tc.primaryForeground} />
-              <Text style={s.addToSessionBtnText}>Add to Session</Text>
+              <Text style={s.addToSessionBtnText}>{isBuildPractice ? 'Add to Your Practice' : 'Add to Session'}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>
