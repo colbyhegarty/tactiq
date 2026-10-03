@@ -2,7 +2,6 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
-  InteractionManager,
   Modal,
   StyleSheet,
   Text,
@@ -75,10 +74,8 @@ export function useMeasure(
   deps: any[] = [],
 ): { layout: SpotlightTarget | null; onLayout: () => void } {
   const [layout, setLayout] = useState<SpotlightTarget | null>(null);
-  const lastRaw = useRef<SpotlightTarget | null>(null);
   const cancelledRef = useRef(false);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const taskRef = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
   const screen = Dimensions.get('window');
 
   const clearRetry = () => {
@@ -97,46 +94,17 @@ export function useMeasure(
     t.x < screen.width + t.width &&
     t.y < screen.height + t.height;
 
-  /** Check if two measurements agree within 1px (layout has settled) */
-  const isStable = (a: SpotlightTarget, b: SpotlightTarget): boolean =>
-    Math.abs(a.x - b.x) <= 1 &&
-    Math.abs(a.y - b.y) <= 1 &&
-    Math.abs(a.width - b.width) <= 1 &&
-    Math.abs(a.height - b.height) <= 1;
-
-  const measure = useCallback((attempt = 0) => {
+  const measure = useCallback(() => {
     if (cancelledRef.current) return;
-    if (!ref.current) {
-      if (attempt < 25) {
-        retryTimer.current = setTimeout(() => measure(attempt + 1), 100);
-      }
-      return;
-    }
+    if (!ref.current) return;
 
     ref.current.measureInWindow(
       (x: number, y: number, width: number, height: number) => {
         if (cancelledRef.current) return;
         const measured = { x, y, width, height };
 
-        if (!isValid(measured)) {
-          if (attempt < 25) {
-            retryTimer.current = setTimeout(() => measure(attempt + 1), 150);
-          }
-          return;
-        }
-
-        // Require two consecutive stable measurements to confirm layout settled.
-        // 150ms gap catches slow layout shifts (canvas sizing, safe-area insets).
-        if (lastRaw.current && isStable(lastRaw.current, measured)) {
+        if (isValid(measured)) {
           setLayout(measured);
-          lastRaw.current = measured;
-        } else {
-          lastRaw.current = measured;
-          if (attempt < 25) {
-            retryTimer.current = setTimeout(() => measure(attempt + 1), 150);
-          } else {
-            setLayout(measured);
-          }
         }
       },
     );
@@ -144,50 +112,32 @@ export function useMeasure(
 
   /**
    * Attach this to the target view's `onLayout` prop.
-   * When Fabric commits layout to the UI thread, this fires on the JS side,
-   * telling us measureInWindow will now return correct coordinates.
-   * Each onLayout restarts the measurement cycle from scratch.
+   * Fabric fires onLayout AFTER it commits layout to the UI thread, so
+   * measureInWindow is guaranteed to return correct coordinates.
+   *
+   * This is the ONLY trigger for measurement — no timer-based fallback
+   * that can race with Fabric's async commit and return stale values.
    */
   const handleLayout = useCallback(() => {
     if (cancelledRef.current) return;
-    // Reset any in-flight measurement — the position may have changed
     clearRetry();
-    lastRaw.current = null;
-    // Small delay for ancestor layouts to also settle, then measure
-    retryTimer.current = setTimeout(() => {
+    // One rAF to let the commit fully propagate, then measure once.
+    requestAnimationFrame(() => {
       if (cancelledRef.current) return;
-      measure(0);
-    }, 50);
+      measure();
+    });
   }, [measure]);
 
-  // Timer-based fallback: also start measuring after interactions complete.
-  // This handles the case where onLayout fires before the effect mounts
-  // (fast component re-renders) or when deps change without a new layout.
+  // When deps change, reset layout so the overlay waits for the next
+  // onLayout event rather than showing stale coordinates.
   useEffect(() => {
     cancelledRef.current = false;
-    lastRaw.current = null;
     setLayout(null);
     clearRetry();
-    if (taskRef.current) { taskRef.current.cancel(); taskRef.current = null; }
-
-    const task = InteractionManager.runAfterInteractions(() => {
-      if (cancelledRef.current) return;
-      // Chain rAFs to let multiple frame commits pass before measuring —
-      // a single rAF isn't always enough for Fabric's async commit.
-      requestAnimationFrame(() => {
-        if (cancelledRef.current) return;
-        requestAnimationFrame(() => {
-          if (cancelledRef.current) return;
-          measure(0);
-        });
-      });
-    });
-    taskRef.current = task;
 
     return () => {
       cancelledRef.current = true;
       clearRetry();
-      if (taskRef.current) { taskRef.current.cancel(); taskRef.current = null; }
     };
   }, deps);
 
