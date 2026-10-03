@@ -46,7 +46,7 @@ export function CoachCard({ icon: Icon, title, description, onDismiss }: CoachCa
       style={[
         s.container,
         {
-          backgroundColor: colors.primaryLight,
+          backgroundColor: colors.coachMark,
           borderColor: colors.primary,
           opacity: fadeAnim,
           transform: [{ translateY: slideAnim }],

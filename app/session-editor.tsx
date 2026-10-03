@@ -714,7 +714,7 @@ export default function SessionEditorScreen() {
               message="Keep building your practice or save when you're ready."
               celebrate
               onDismiss={completeGuide}
-              autoDismissMs={2500}
+              autoDismissMs={5000}
             />
           )}
 

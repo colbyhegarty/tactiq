@@ -81,7 +81,7 @@ export function CoachTooltip({
     arrow === 'left' ? ChevronLeft :
     arrow === 'right' ? ChevronRight : null;
 
-  const bgColor = celebrate ? colors.primary : colors.primaryLight;
+  const bgColor = celebrate ? colors.primary : colors.coachMark;
   const borderColor = celebrate ? colors.primary : colors.primary;
   const textColor = celebrate ? colors.primaryForeground : colors.foreground;
   const subTextColor = celebrate ? 'rgba(255,255,255,0.85)' : colors.mutedForeground;

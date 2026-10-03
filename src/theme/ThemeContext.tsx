@@ -21,6 +21,8 @@ export const darkColors = {
   primary: '#4a9d6e',
   primaryForeground: '#ffffff',
   primaryLight: 'rgba(74, 157, 110, 0.1)',
+  /** Opaque dark-teal background for coach marks — fully covers UI behind it */
+  coachMark: '#1a2e2b',
 
   // Accent
   accent: '#d4a641',
@@ -71,6 +73,8 @@ export const lightColors: Colors = {
   primary: '#3d8b5e',
   primaryForeground: '#ffffff',
   primaryLight: 'rgba(61, 139, 94, 0.1)',
+  /** Opaque teal-tinted background for coach marks — fully covers UI behind it */
+  coachMark: '#e1efe7',
 
   // Accent
   accent: '#c49530',
