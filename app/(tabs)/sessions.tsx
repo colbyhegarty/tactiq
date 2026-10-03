@@ -147,7 +147,7 @@ export default function SessionsScreen() {
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
   const { selectedGoal, showGuide, guideStep, advanceGuide, dismissCoachMark } = useOnboarding();
   const createBtnRef = useRef<View>(null);
-  const createBtnLayout = useMeasure(createBtnRef, [showGuide, guideStep]);
+  const createBtnLayout = useMeasure(createBtnRef, [showGuide, guideStep, sessions.length]);
 
   useFocusEffect(useCallback(() => { loadSessions(); trackScreen('Sessions'); }, []));
 

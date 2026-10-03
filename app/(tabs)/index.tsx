@@ -49,11 +49,10 @@ export default function LibraryScreen() {
   const styles = useMemo(() => create_styles(tc), [tc]);
   const { subscription, isDrillUnlocked, tryPreviewDrill, previewRemaining, previewState } = useSubscription();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
-  const { selectedGoal, showGuide, guideStep, completeGuide, dismissCoachMark, onboardingSessionId, proPreviewExtended } = useOnboarding();
+  const { selectedGoal, showGuide, guideStep, completeGuide, dismissCoachMark, onboardingSessionId, proPreviewExtended, seenFeatures, markFeatureSeen } = useOnboarding();
   const filterToggleRef = useRef<View>(null);
   const filterToggleFn = useRef<(() => void) | null>(null);
   const filterLayout = useMeasure(filterToggleRef, [showGuide]);
-  const [libraryHintDismissed, setLibraryHintDismissed] = useState(false);
   // Auto-dismiss coach cards when user demonstrates library understanding
   const [coachDismissedByInteraction, setCoachDismissedByInteraction] = useState(false);
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
@@ -81,12 +80,12 @@ export default function LibraryScreen() {
     if (!showGuide || coachDismissedByInteraction) return;
     setCoachDismissedByInteraction(true);
     if (selectedGoal === 'build_practice') {
-      setLibraryHintDismissed(true);
+      markFeatureSeen('drillLibrary');
       track('onboarding_library_hint_dismissed', { goal: 'build_practice', trigger: 'interaction' });
     } else if (selectedGoal === 'find_drills') {
       track('onboarding_library_hint_dismissed', { goal: 'find_drills', trigger: 'interaction' });
     }
-  }, [showGuide, coachDismissedByInteraction, selectedGoal]);
+  }, [showGuide, coachDismissedByInteraction, selectedGoal, markFeatureSeen]);
 
   const handleListScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (e.nativeEvent.contentOffset.y > 40) {
@@ -527,14 +526,14 @@ export default function LibraryScreen() {
       )}
 
       {/* CoachCard — build_practice Library hint (positioned near search/filter area) */}
-      {showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId && !libraryHintDismissed && (
+      {showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId && !seenFeatures.drillLibrary && !coachDismissedByInteraction && (
         <View style={{ paddingHorizontal: spacing.md, marginTop: -spacing.xs }}>
           <CoachCard
             icon={Target}
             title="Choose a drill"
             description="Browse, search, or filter to find one that fits your practice."
             onDismiss={() => {
-              setLibraryHintDismissed(true);
+              markFeatureSeen('drillLibrary');
               track('onboarding_library_hint_dismissed', { goal: 'build_practice', trigger: 'manual' });
             }}
           />
