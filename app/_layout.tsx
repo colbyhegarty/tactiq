@@ -54,11 +54,8 @@ function RootStack() {
           router.replace('/');
           break;
         case 'create_drill':
-          // Navigate to Create tab then immediately push drill editor on top.
-          // React Navigation batches both updates in the same tick, so the
-          // Create screen never visibly renders — the user goes straight to
-          // the editor. Back button returns to the Create screen normally.
-          router.replace('/create');
+          // Go straight to the drill editor — single transition, no flash.
+          // The back button in drill-editor handles navigating to /create.
           router.push('/drill-editor');
           break;
         case 'explore':

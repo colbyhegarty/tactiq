@@ -75,15 +75,8 @@ export function useMeasure(
 ): { layout: SpotlightTarget | null; onLayout: () => void } {
   const [layout, setLayout] = useState<SpotlightTarget | null>(null);
   const cancelledRef = useRef(false);
-  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasLaidOutRef = useRef(false);
   const screen = Dimensions.get('window');
-
-  const clearRetry = () => {
-    if (retryTimer.current) {
-      clearTimeout(retryTimer.current);
-      retryTimer.current = null;
-    }
-  };
 
   /** Validate that coordinates are on-screen and the element has real size */
   const isValid = (t: SpotlightTarget): boolean =>
@@ -95,14 +88,12 @@ export function useMeasure(
     t.y < screen.height + t.height;
 
   const measure = useCallback(() => {
-    if (cancelledRef.current) return;
-    if (!ref.current) return;
+    if (cancelledRef.current || !ref.current) return;
 
     ref.current.measureInWindow(
       (x: number, y: number, width: number, height: number) => {
         if (cancelledRef.current) return;
         const measured = { x, y, width, height };
-
         if (isValid(measured)) {
           setLayout(measured);
         }
@@ -114,30 +105,30 @@ export function useMeasure(
    * Attach this to the target view's `onLayout` prop.
    * Fabric fires onLayout AFTER it commits layout to the UI thread, so
    * measureInWindow is guaranteed to return correct coordinates.
-   *
-   * This is the ONLY trigger for measurement — no timer-based fallback
-   * that can race with Fabric's async commit and return stale values.
    */
   const handleLayout = useCallback(() => {
     if (cancelledRef.current) return;
-    clearRetry();
-    // One rAF to let the commit fully propagate, then measure once.
-    requestAnimationFrame(() => {
-      if (cancelledRef.current) return;
-      measure();
-    });
+    hasLaidOutRef.current = true;
+    // Measure directly — onLayout means the commit has happened.
+    measure();
   }, [measure]);
 
-  // When deps change, reset layout so the overlay waits for the next
-  // onLayout event rather than showing stale coordinates.
+  // When deps change: if the view has already been laid out (meaning
+  // native layout was committed previously), re-measure immediately.
+  // If not, wait for the first onLayout event.
+  // Never null out layout — that caused the overlay to disappear when
+  // onLayout didn't re-fire after a deps change.
   useEffect(() => {
     cancelledRef.current = false;
-    setLayout(null);
-    clearRetry();
+
+    if (hasLaidOutRef.current) {
+      // View is already on screen — layout was committed long ago,
+      // so measureInWindow will return correct values.
+      measure();
+    }
 
     return () => {
       cancelledRef.current = true;
-      clearRetry();
     };
   }, deps);
 

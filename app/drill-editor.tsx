@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown, ChevronUp, Save, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ChevronUp, Save, Trash2, X } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -24,7 +24,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
+import { useOnboarding } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -110,9 +110,8 @@ export default function DrillEditorScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const [canScroll, setCanScroll] = useState(true);
 
-  // Refs for spotlight targets
-  const toolsHeaderRef = useRef<View>(null);
-  const { layout: toolsHeaderLayout, onLayout: toolsHeaderOnLayout } = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen, loading]);
+  // Whether to show the inline guide highlighting the Tools header
+  const showDrillGuide = showGuide && selectedGoal === 'create_drill' && !toolsEverOpened;
 
   // Guide completes when drill is saved (handled in handleSave)
 
@@ -255,23 +254,19 @@ export default function DrillEditorScreen() {
     <SafeAreaView style={[e.container, { backgroundColor: tc.background }]} edges={['top']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={tc.background} />
       <View style={e.header}>
-        <TouchableOpacity onPress={() => router.back()} style={e.backBtn}><ArrowLeft size={22} color={tc.foreground} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => {
+          if (showGuide && selectedGoal === 'create_drill') {
+            // During onboarding, back goes to the Create tab
+            router.replace('/create');
+          } else {
+            router.back();
+          }
+        }} style={e.backBtn}><ArrowLeft size={22} color={tc.foreground} /></TouchableOpacity>
         <Text style={e.headerTitle}>{existingId ? 'Edit Drill' : 'Create Drill'}</Text>
         <TouchableOpacity style={e.saveHeaderBtn} onPress={handleSave}>
           <Save size={18} color={tc.primaryForeground} />
         </TouchableOpacity>
       </View>
-
-      {/* Phase 1: Highlight Tools accordion before it's been opened */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'create_drill' && !toolsEverOpened}
-        target={toolsHeaderLayout}
-        heading="Build your drill"
-        message="Open Tools to add players, cones, goals, and movements."
-        tooltipPosition="above"
-        onSkip={dismissCoachMark}
-        nonBlocking
-      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -294,7 +289,16 @@ export default function DrillEditorScreen() {
           <View>
 
           {/* Tools - collapsible */}
-          <TouchableOpacity ref={toolsHeaderRef} collapsable={false} onLayout={toolsHeaderOnLayout} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => {
+          {showDrillGuide && (
+            <View style={[e.guideCard, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
+              <Text style={[e.guideHeading, { color: tc.foreground }]}>Build your drill</Text>
+              <Text style={[e.guideMessage, { color: tc.mutedForeground }]}>Open Tools to add players, cones, goals, and movements.</Text>
+              <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={e.guideClose}>
+                <X size={14} color={tc.mutedForeground} />
+              </TouchableOpacity>
+            </View>
+          )}
+          <TouchableOpacity style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen, showDrillGuide && { borderColor: tc.primary, borderWidth: 2 }]} onPress={() => {
             const willOpen = !toolsOpen;
             toggle(setToolsOpen);
             if (willOpen) setToolsEverOpened(true);
@@ -462,4 +466,8 @@ function create_e(tc: any) { return StyleSheet.create({
   clearBtnText: { fontSize: 14, fontWeight: '500', color: tc.foreground },
   saveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, borderRadius: borderRadius.md, paddingVertical: 14 },
   saveBtnText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
+  guideCard: { marginTop: spacing.sm, marginHorizontal: 0, paddingHorizontal: spacing.md, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1, gap: 4 },
+  guideHeading: { fontSize: 14, fontWeight: '700', paddingRight: spacing.lg },
+  guideMessage: { fontSize: 13, lineHeight: 19, paddingRight: spacing.lg },
+  guideClose: { position: 'absolute' as const, top: 10, right: 10, padding: 2 },
 }); };
