@@ -24,7 +24,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, CoachTooltip, useMeasure } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -58,7 +58,6 @@ export default function DrillEditorScreen() {
 
   // Onboarding phase tracking for create_drill flow
   const [toolsEverOpened, setToolsEverOpened] = useState(false);
-  const [detailsHintDismissed, setDetailsHintDismissed] = useState(false);
 
   // Undo history — stores previous diagram states (max 50)
   const undoStack = useRef<DiagramData[]>([]);
@@ -335,15 +334,6 @@ export default function DrillEditorScreen() {
           </TouchableOpacity>
           {detailsOpen && (
             <View style={e.sectionBody}>
-              {/* Onboarding hint — shown first time Details is opened during create_drill flow */}
-              {showGuide && selectedGoal === 'create_drill' && !detailsHintDismissed && (
-                <CoachTooltip
-                  heading="Finish your drill"
-                  message="Add a name and any details you'd like, then save."
-                  buttonText="Got it"
-                  onDismiss={() => setDetailsHintDismissed(true)}
-                />
-              )}
               <View style={e.sectionBodyInner}>
                 <View style={e.formRow}>
                   <View style={e.formField}><Text style={e.formLabel}>Drill Name *</Text><TextInput style={e.formInput} value={formData.name} onChangeText={v => handleFormChange('name', v)} placeholder="Enter drill name" placeholderTextColor={tc.mutedForeground} /></View>

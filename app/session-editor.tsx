@@ -677,6 +677,7 @@ export default function SessionEditorScreen() {
         tooltipPosition="above"
         onSkip={dismissCoachMark}
         nonBlocking
+        celebrate
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

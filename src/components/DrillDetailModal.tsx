@@ -489,23 +489,17 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
               onLayout={isBuildPractice ? (e) => { addBtnY.current = e.nativeEvent.layout.y; } : undefined}
             >
               <CalendarPlus size={18} color={tc.primaryForeground} />
-              <Text style={s.addToSessionBtnText}>{isBuildPractice ? 'Add to Your Practice' : 'Add to Session'}</Text>
+              <Text style={s.addToSessionBtnText}>Add to Session</Text>
             </TouchableOpacity>
           </ScrollView>
 
           {/* Sticky onboarding CTA — visible until user scrolls to the inline button */}
           {isBuildPractice && !inlineAddVisible && (
             <View style={s.stickyCtaContainer}>
-              <View style={s.stickyCtaInner}>
-                <View style={s.stickyCtaText}>
-                  <Text style={s.stickyCtaHeading}>Building your practice</Text>
-                  <Text style={s.stickyCtaMessage}>Review the drill, then add it when you're ready.</Text>
-                </View>
-                <TouchableOpacity style={s.stickyCtaButton} onPress={handleAddToSession} activeOpacity={0.7}>
-                  <CalendarPlus size={16} color={tc.primaryForeground} />
-                  <Text style={s.stickyCtaButtonText}>Add to Practice</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity style={s.stickyCtaButton} onPress={handleAddToSession} activeOpacity={0.7}>
+                <CalendarPlus size={18} color={tc.primaryForeground} />
+                <Text style={s.stickyCtaButtonText}>Add to Session</Text>
+              </TouchableOpacity>
             </View>
           )}
         </View>
@@ -572,10 +566,6 @@ function create_s(tc: any) { return StyleSheet.create({
   addToSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, paddingVertical: 14, borderRadius: borderRadius.md, marginTop: spacing.sm },
   addToSessionBtnText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
   stickyCtaContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: tc.background, borderTopWidth: 1, borderTopColor: tc.border, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg },
-  stickyCtaInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  stickyCtaText: { flex: 1, gap: 2 },
-  stickyCtaHeading: { fontSize: 13, fontWeight: '700', color: tc.foreground },
-  stickyCtaMessage: { fontSize: 11, lineHeight: 15, color: tc.mutedForeground },
-  stickyCtaButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: tc.primary, paddingVertical: 10, paddingHorizontal: spacing.md, borderRadius: borderRadius.md },
-  stickyCtaButtonText: { fontSize: 13, fontWeight: '600', color: tc.primaryForeground },
+  stickyCtaButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, paddingVertical: 14, borderRadius: borderRadius.md },
+  stickyCtaButtonText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
 }); };
