@@ -112,7 +112,7 @@ export default function DrillEditorScreen() {
 
   // Refs for spotlight targets
   const toolsHeaderRef = useRef<View>(null);
-  const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen, loading]);
+  const { layout: toolsHeaderLayout, onLayout: toolsHeaderOnLayout } = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen, loading]);
 
   // Guide completes when drill is saved (handled in handleSave)
 
@@ -294,7 +294,7 @@ export default function DrillEditorScreen() {
           <View>
 
           {/* Tools - collapsible */}
-          <TouchableOpacity ref={toolsHeaderRef} collapsable={false} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => {
+          <TouchableOpacity ref={toolsHeaderRef} collapsable={false} onLayout={toolsHeaderOnLayout} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => {
             const willOpen = !toolsOpen;
             toggle(setToolsOpen);
             if (willOpen) setToolsEverOpened(true);

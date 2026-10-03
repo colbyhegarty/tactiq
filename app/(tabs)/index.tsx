@@ -52,7 +52,7 @@ export default function LibraryScreen() {
   const { selectedGoal, showGuide, guideStep, completeGuide, dismissCoachMark, onboardingSessionId, proPreviewExtended, seenFeatures, markFeatureSeen } = useOnboarding();
   const filterToggleRef = useRef<View>(null);
   const filterToggleFn = useRef<(() => void) | null>(null);
-  const filterLayout = useMeasure(filterToggleRef, [showGuide]);
+  const { layout: filterLayout, onLayout: filterOnLayout } = useMeasure(filterToggleRef, [showGuide]);
   // Auto-dismiss coach cards when user demonstrates library understanding
   const [coachDismissedByInteraction, setCoachDismissedByInteraction] = useState(false);
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
@@ -490,6 +490,7 @@ export default function LibraryScreen() {
           resultCount={allDrills.length}
           isLoading={isLoading}
           filterToggleRef={filterToggleRef}
+          filterToggleOnLayout={filterOnLayout}
           toggleRef={filterToggleFn}
           onFiltersToggle={(open) => { if (open) dismissCoachByInteraction(); }}
           onSearchFocus={dismissCoachByInteraction}

@@ -147,7 +147,7 @@ export default function SessionsScreen() {
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
   const { selectedGoal, showGuide, guideStep, advanceGuide, dismissCoachMark } = useOnboarding();
   const createBtnRef = useRef<View>(null);
-  const createBtnLayout = useMeasure(createBtnRef, [showGuide, guideStep, sessions.length]);
+  const { layout: createBtnLayout, onLayout: createBtnOnLayout } = useMeasure(createBtnRef, [showGuide, guideStep, sessions.length]);
 
   useFocusEffect(useCallback(() => { loadSessions(); trackScreen('Sessions'); }, []));
 
@@ -319,7 +319,7 @@ export default function SessionsScreen() {
             <Text style={st.emptyTitle}>{filterDate ? 'No sessions on this day' : 'No sessions yet'}</Text>
             <Text style={st.emptySubtitle}>{filterDate ? 'Try selecting a different date' : 'Create your first training session'}</Text>
             {!filterDate && (
-              <TouchableOpacity ref={createBtnRef} collapsable={false} style={st.createButton} onPress={handleCreateSession}>
+              <TouchableOpacity ref={createBtnRef} collapsable={false} onLayout={createBtnOnLayout} style={st.createButton} onPress={handleCreateSession}>
                 <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
               </TouchableOpacity>
             )}

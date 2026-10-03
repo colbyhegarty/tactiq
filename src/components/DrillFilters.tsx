@@ -44,6 +44,8 @@ interface DrillFiltersProps {
   onSearchFocus?: () => void;
   /** Ref forwarded to the filter toggle button for measurement */
   filterToggleRef?: React.Ref<View>;
+  /** onLayout callback forwarded to the filter toggle button for measurement */
+  filterToggleOnLayout?: () => void;
   /** Imperative ref to programmatically toggle filters */
   toggleRef?: React.MutableRefObject<(() => void) | null>;
 }
@@ -59,6 +61,7 @@ export function DrillFilters({
   onFiltersToggle,
   onSearchFocus,
   filterToggleRef,
+  filterToggleOnLayout,
   toggleRef,
 }: DrillFiltersProps) {
   const { colors: tc } = useTheme();
@@ -294,6 +297,7 @@ export function DrillFilters({
       {/* Collapsible Filters Button */}
       <TouchableOpacity
         ref={filterToggleRef}
+        onLayout={filterToggleOnLayout}
         style={[styles.filtersToggle, filtersOpen && styles.filtersToggleOpen]}
         onPress={toggleFilters}
         activeOpacity={0.7}

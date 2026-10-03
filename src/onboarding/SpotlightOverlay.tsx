@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
@@ -56,18 +56,29 @@ interface SpotlightOverlayProps {
 
 /**
  * Measures a View ref's position on screen.
- * Returns null until a valid, stable measurement is obtained.
+ * Returns `{ layout, onLayout }` — attach `onLayout` to the target View so
+ * the hook knows when the Fabric renderer has committed native layout.
  *
- * Waits for the view to complete layout, then measures its window position.
- * Re-measures whenever deps change or the view re-layouts. Two consecutive
- * measurements must agree (within 1px) to confirm the layout has settled,
- * preventing stale coordinates from navigation transitions or async renders.
+ * In production builds (optimised Hermes bytecode), JS runs fast enough that
+ * timer-based approaches (InteractionManager, rAF, setTimeout) can fire
+ * before the Fabric renderer commits layout diffs to the UI thread.
+ * `measureInWindow` then returns stale coordinates that pass the stability
+ * check because the view is sitting at a consistent *wrong* position.
+ *
+ * By listening to the native `onLayout` event on the target view, we know
+ * the UI-thread layout has actually committed and can measure reliably.
+ * The hook also runs a timer-based fallback so it works even if onLayout
+ * fires before the effect mounts (e.g. fast re-renders).
  */
-export function useMeasure(ref: React.RefObject<any>, deps: any[] = []) {
+export function useMeasure(
+  ref: React.RefObject<any>,
+  deps: any[] = [],
+): { layout: SpotlightTarget | null; onLayout: () => void } {
   const [layout, setLayout] = useState<SpotlightTarget | null>(null);
   const lastRaw = useRef<SpotlightTarget | null>(null);
   const cancelledRef = useRef(false);
   const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const taskRef = useRef<ReturnType<typeof InteractionManager.runAfterInteractions> | null>(null);
   const screen = Dimensions.get('window');
 
   const clearRetry = () => {
@@ -93,11 +104,10 @@ export function useMeasure(ref: React.RefObject<any>, deps: any[] = []) {
     Math.abs(a.width - b.width) <= 1 &&
     Math.abs(a.height - b.height) <= 1;
 
-  const measure = (attempt = 0) => {
+  const measure = useCallback((attempt = 0) => {
     if (cancelledRef.current) return;
     if (!ref.current) {
-      // Ref not attached yet — retry up to 20 times
-      if (attempt < 20) {
+      if (attempt < 25) {
         retryTimer.current = setTimeout(() => measure(attempt + 1), 100);
       }
       return;
@@ -109,62 +119,79 @@ export function useMeasure(ref: React.RefObject<any>, deps: any[] = []) {
         const measured = { x, y, width, height };
 
         if (!isValid(measured)) {
-          // Invalid measurement — retry
-          if (attempt < 20) {
-            retryTimer.current = setTimeout(() => measure(attempt + 1), 100);
+          if (attempt < 25) {
+            retryTimer.current = setTimeout(() => measure(attempt + 1), 150);
           }
           return;
         }
 
-        // Require two consecutive stable measurements to confirm layout settled
+        // Require two consecutive stable measurements to confirm layout settled.
+        // 150ms gap catches slow layout shifts (canvas sizing, safe-area insets).
         if (lastRaw.current && isStable(lastRaw.current, measured)) {
           setLayout(measured);
           lastRaw.current = measured;
         } else {
-          // First valid measurement or position changed — record and re-check.
-          // 150ms gap gives layout shifts (canvas sizing, safe-area insets)
-          // time to settle so the stability check catches them.
           lastRaw.current = measured;
-          if (attempt < 20) {
+          if (attempt < 25) {
             retryTimer.current = setTimeout(() => measure(attempt + 1), 150);
           } else {
-            // Max attempts — accept the last valid measurement
             setLayout(measured);
           }
         }
       },
     );
-  };
+  }, [ref]);
 
-  // Reset and re-measure when deps change
+  /**
+   * Attach this to the target view's `onLayout` prop.
+   * When Fabric commits layout to the UI thread, this fires on the JS side,
+   * telling us measureInWindow will now return correct coordinates.
+   * Each onLayout restarts the measurement cycle from scratch.
+   */
+  const handleLayout = useCallback(() => {
+    if (cancelledRef.current) return;
+    // Reset any in-flight measurement — the position may have changed
+    clearRetry();
+    lastRaw.current = null;
+    // Small delay for ancestor layouts to also settle, then measure
+    retryTimer.current = setTimeout(() => {
+      if (cancelledRef.current) return;
+      measure(0);
+    }, 50);
+  }, [measure]);
+
+  // Timer-based fallback: also start measuring after interactions complete.
+  // This handles the case where onLayout fires before the effect mounts
+  // (fast component re-renders) or when deps change without a new layout.
   useEffect(() => {
     cancelledRef.current = false;
     lastRaw.current = null;
     setLayout(null);
     clearRetry();
+    if (taskRef.current) { taskRef.current.cancel(); taskRef.current = null; }
 
-    // Wait for in-flight interactions (React Navigation screen transitions,
-    // LayoutAnimations, etc.) to finish before measuring. Without this,
-    // measureInWindow can return coordinates mid-transition that pass the
-    // stability check (two readings 80ms apart agree during a smooth
-    // animation) but point to the wrong position.
     const task = InteractionManager.runAfterInteractions(() => {
       if (cancelledRef.current) return;
-      // One more rAF so the post-interaction layout pass has committed
+      // Chain rAFs to let multiple frame commits pass before measuring —
+      // a single rAF isn't always enough for Fabric's async commit.
       requestAnimationFrame(() => {
         if (cancelledRef.current) return;
-        measure(0);
+        requestAnimationFrame(() => {
+          if (cancelledRef.current) return;
+          measure(0);
+        });
       });
     });
+    taskRef.current = task;
 
     return () => {
       cancelledRef.current = true;
       clearRetry();
-      task.cancel();
+      if (taskRef.current) { taskRef.current.cancel(); taskRef.current = null; }
     };
   }, deps);
 
-  return layout;
+  return { layout, onLayout: handleLayout };
 }
 
 export function SpotlightOverlay({

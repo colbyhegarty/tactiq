@@ -566,7 +566,7 @@ export default function SessionEditorScreen() {
 
   // Refs for non-blocking spotlight targets
   const addActivityRef = useRef<View>(null);
-  const addActivityLayout = useMeasure(addActivityRef, [showGuide, guideStep]);
+  const { layout: addActivityLayout, onLayout: addActivityOnLayout } = useMeasure(addActivityRef, [showGuide, guideStep]);
 
   useEffect(() => {
     if (!isNew && params.id) {
@@ -732,7 +732,7 @@ export default function SessionEditorScreen() {
                   isFirst={i === 0} isLast={i === activities.length - 1} />
               ))
             )}
-            <TouchableOpacity ref={addActivityRef} collapsable={false} style={s.addDashed} onPress={handleAddActivityPress}>
+            <TouchableOpacity ref={addActivityRef} collapsable={false} onLayout={addActivityOnLayout} style={s.addDashed} onPress={handleAddActivityPress}>
               <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
             </TouchableOpacity>
           </View>
