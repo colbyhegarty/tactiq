@@ -13,12 +13,14 @@ interface CoachTooltipProps {
   heading?: string;
   /** Which direction the arrow points (toward the target element) */
   arrow?: ArrowDirection;
-  /** Button text — defaults to "Got it" */
+  /** Button text — omit to hide button entirely */
   buttonText?: string;
   /** Called when user taps the action button or X */
   onDismiss: () => void;
   /** If true, shows a celebratory style (green background, no arrow) */
   celebrate?: boolean;
+  /** Auto-dismiss after this many milliseconds. X still available for immediate dismiss. */
+  autoDismissMs?: number;
 }
 
 /**
@@ -29,13 +31,15 @@ export function CoachTooltip({
   message,
   heading,
   arrow = 'none',
-  buttonText = 'Got it',
+  buttonText,
   onDismiss,
   celebrate = false,
+  autoDismissMs,
 }: CoachTooltipProps) {
   const { colors } = useTheme();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.95)).current;
+  const dismissedRef = useRef(false);
 
   useEffect(() => {
     Animated.parallel([
@@ -54,6 +58,22 @@ export function CoachTooltip({
       }),
     ]).start();
   }, []);
+
+  // Auto-dismiss timer
+  useEffect(() => {
+    if (!autoDismissMs) return;
+    const timer = setTimeout(() => {
+      if (!dismissedRef.current) {
+        dismissedRef.current = true;
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }).start(() => onDismiss());
+      }
+    }, autoDismissMs);
+    return () => clearTimeout(timer);
+  }, [autoDismissMs]);
 
   const ArrowIcon =
     arrow === 'up' ? ChevronUp :
@@ -107,23 +127,25 @@ export function CoachTooltip({
             {message}
           </Text>
         </View>
-        <TouchableOpacity
-          style={[
-            s.button,
-            {
-              backgroundColor: celebrate ? 'rgba(255,255,255,0.2)' : colors.primary,
-            },
-          ]}
-          onPress={onDismiss}
-          activeOpacity={0.7}
-        >
-          <Text style={[s.buttonText, { color: celebrate ? colors.primaryForeground : colors.primaryForeground }]}>
-            {buttonText}
-          </Text>
-        </TouchableOpacity>
+        {buttonText && (
+          <TouchableOpacity
+            style={[
+              s.button,
+              {
+                backgroundColor: celebrate ? 'rgba(255,255,255,0.2)' : colors.primary,
+              },
+            ]}
+            onPress={onDismiss}
+            activeOpacity={0.7}
+          >
+            <Text style={[s.buttonText, { color: colors.primaryForeground }]}>
+              {buttonText}
+            </Text>
+          </TouchableOpacity>
+        )}
       </View>
 
-      <TouchableOpacity onPress={onDismiss} hitSlop={12} style={s.close}>
+      <TouchableOpacity onPress={() => { if (!dismissedRef.current) { dismissedRef.current = true; onDismiss(); } }} hitSlop={12} style={s.close}>
         <X size={14} color={celebrate ? 'rgba(255,255,255,0.6)' : colors.mutedForeground} />
       </TouchableOpacity>
     </Animated.View>
@@ -136,7 +158,7 @@ const s = StyleSheet.create({
     marginTop: spacing.sm,
     marginBottom: spacing.xs,
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 10,
     borderRadius: borderRadius.lg,
     borderWidth: 1,
   },

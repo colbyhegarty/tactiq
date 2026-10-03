@@ -672,12 +672,11 @@ export default function SessionEditorScreen() {
       <SpotlightOverlay
         visible={showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew}
         target={addActivityLayout}
-        heading="Add your first activity"
+        heading="Add your first drill"
         message="Start by adding a drill to your practice."
         tooltipPosition="above"
         onSkip={dismissCoachMark}
         nonBlocking
-        celebrate
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -714,8 +713,8 @@ export default function SessionEditorScreen() {
               heading="First drill added!"
               message="Keep building your practice or save when you're ready."
               celebrate
-              buttonText="Got it"
               onDismiss={completeGuide}
+              autoDismissMs={2500}
             />
           )}
 

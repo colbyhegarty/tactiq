@@ -145,7 +145,7 @@ export function SpotlightOverlay({
       : hl.y + hl.h + 12
     : screen.height / 2 - 60;
 
-  const bgColor = celebrate ? colors.primary : colors.card;
+  const bgColor = celebrate ? colors.primary : colors.primaryLight;
   const borderColor = colors.primary;
   const textColor = celebrate ? colors.primaryForeground : colors.foreground;
   const subTextColor = celebrate
