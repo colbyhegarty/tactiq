@@ -12,7 +12,7 @@ import { borderRadius, spacing } from '../theme/colors';
  */
 export function LockedDrillOverlay() {
   return (
-    <View style={s.container} pointerEvents="none">
+    <View style={s.container}>
       {/* Dark frost layer — simulates blur without native blur dependency */}
       <View style={s.frost} />
       {/* Lock badge */}
