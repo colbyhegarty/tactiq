@@ -1,6 +1,6 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, Copy, Edit, Plus, Trash2, Users, X } from 'lucide-react-native';
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert, LayoutAnimation, Platform, ScrollView, StatusBar,
   StyleSheet,
@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { deleteSession, duplicateSession, getSessions } from '../../src/lib/sessionStorage';
-import { useOnboarding, SpotlightOverlay, useMeasure } from '../../src/onboarding';
+import { useOnboarding } from '../../src/onboarding';
 import { usePaywallGate, PaywallModal } from '../../src/subscription';
 import { trackScreen, track } from '../../src/lib/analytics';
 import { borderRadius, spacing } from '../../src/theme/colors';
@@ -146,8 +146,9 @@ export default function SessionsScreen() {
   const router = useRouter();
   const { gate, paywallVisible, paywallReason, dismissPaywall } = usePaywallGate();
   const { selectedGoal, showGuide, guideStep, advanceGuide, dismissCoachMark } = useOnboarding();
-  const createBtnRef = useRef<View>(null);
-  const { layout: createBtnLayout, onLayout: createBtnOnLayout } = useMeasure(createBtnRef, [showGuide, guideStep, sessions.length]);
+
+  // Whether to show the inline guide highlighting the Create Session button
+  const showSessionGuide = showGuide && selectedGoal === 'build_practice' && guideStep === 0;
 
   useFocusEffect(useCallback(() => { loadSessions(); trackScreen('Sessions'); }, []));
 
@@ -278,20 +279,6 @@ export default function SessionsScreen() {
         </View>
       </View>
 
-      {/* Spotlight overlay — step 0: highlight Create Session button */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 0}
-        target={createBtnLayout}
-        heading="Create your first session"
-        message="Start building your practice plan."
-        onTargetPress={() => {
-          advanceGuide();
-          handleCreateSession();
-        }}
-        tooltipPosition="below"
-        onSkip={dismissCoachMark}
-      />
-
       {/* Inline Calendar */}
       {calendarOpen && (
         <InlineCalendar
@@ -319,9 +306,23 @@ export default function SessionsScreen() {
             <Text style={st.emptyTitle}>{filterDate ? 'No sessions on this day' : 'No sessions yet'}</Text>
             <Text style={st.emptySubtitle}>{filterDate ? 'Try selecting a different date' : 'Create your first training session'}</Text>
             {!filterDate && (
-              <TouchableOpacity ref={createBtnRef} collapsable={false} onLayout={createBtnOnLayout} style={st.createButton} onPress={handleCreateSession}>
-                <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
-              </TouchableOpacity>
+              <>
+                {showSessionGuide && (
+                  <View style={[st.guideCard, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
+                    <Text style={[st.guideHeading, { color: tc.foreground }]}>Create your first session</Text>
+                    <Text style={[st.guideMessage, { color: tc.mutedForeground }]}>Start building your practice plan.</Text>
+                    <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={st.guideClose}>
+                      <X size={14} color={tc.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+                <TouchableOpacity style={[st.createButton, showSessionGuide && { borderColor: tc.primary, borderWidth: 2 }]} onPress={() => {
+                  if (showSessionGuide) advanceGuide();
+                  handleCreateSession();
+                }}>
+                  <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         ) : (
@@ -369,6 +370,10 @@ function create_st(tc: any) { return StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: tc.mutedForeground, marginBottom: spacing.lg },
   createButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: tc.primary, paddingVertical: 12, paddingHorizontal: spacing.lg, borderRadius: borderRadius.md },
   createButtonText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
+  guideCard: { marginBottom: spacing.md, paddingHorizontal: spacing.md, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1, gap: 4, width: '100%' },
+  guideHeading: { fontSize: 14, fontWeight: '700', paddingRight: spacing.lg },
+  guideMessage: { fontSize: 13, lineHeight: 19, paddingRight: spacing.lg },
+  guideClose: { position: 'absolute' as const, top: 10, right: 10, padding: 2 },
   createOutlineButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, borderWidth: 1, borderColor: tc.border, borderRadius: borderRadius.lg, paddingVertical: 14, marginTop: spacing.md },
   createOutlineText: { fontSize: 14, fontWeight: '500', color: tc.foreground },
 }); };

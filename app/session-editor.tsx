@@ -17,7 +17,7 @@ import {
   Trash2,
   X
 } from 'lucide-react-native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -36,7 +36,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { track } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, CoachTooltip, useMeasure } from '../src/onboarding';
+import { useOnboarding, CoachTooltip } from '../src/onboarding';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
@@ -564,9 +564,8 @@ export default function SessionEditorScreen() {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide, dismissCoachMark, setOnboardingSessionId } = useOnboarding();
 
-  // Refs for non-blocking spotlight targets
-  const addActivityRef = useRef<View>(null);
-  const { layout: addActivityLayout, onLayout: addActivityOnLayout } = useMeasure(addActivityRef, [showGuide, guideStep]);
+  // Whether to show the inline guide highlighting the Add Activity button
+  const showAddGuide = showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew;
 
   useEffect(() => {
     if (!isNew && params.id) {
@@ -668,17 +667,6 @@ export default function SessionEditorScreen() {
         <Text style={s.headerTitle}>{isNew ? 'New Session' : 'Edit Session'}</Text>
       </View>
 
-      {/* Non-blocking spotlight step 1: Add your first activity */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew}
-        target={addActivityLayout}
-        heading="Add your first drill"
-        message="Start by adding a drill to your practice."
-        tooltipPosition="above"
-        onSkip={dismissCoachMark}
-        nonBlocking
-      />
-
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={s.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
           {/* Session Details */}
@@ -732,7 +720,16 @@ export default function SessionEditorScreen() {
                   isFirst={i === 0} isLast={i === activities.length - 1} />
               ))
             )}
-            <TouchableOpacity ref={addActivityRef} collapsable={false} onLayout={addActivityOnLayout} style={s.addDashed} onPress={handleAddActivityPress}>
+            {showAddGuide && (
+              <View style={[s.guideCard, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
+                <Text style={[s.guideHeading, { color: tc.foreground }]}>Add your first drill</Text>
+                <Text style={[s.guideMessage, { color: tc.mutedForeground }]}>Start by adding a drill to your practice.</Text>
+                <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={s.guideClose}>
+                  <X size={14} color={tc.mutedForeground} />
+                </TouchableOpacity>
+              </View>
+            )}
+            <TouchableOpacity style={[s.addDashed, showAddGuide && { borderColor: tc.primary, borderWidth: 2 }]} onPress={handleAddActivityPress}>
               <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
             </TouchableOpacity>
           </View>
@@ -821,6 +818,10 @@ function create_s(tc: any) { return StyleSheet.create({
   emptyText: { textAlign: 'center', color: tc.mutedForeground, fontSize: 13, paddingVertical: spacing.lg },
   addDashed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderWidth: 1.5, borderStyle: 'dashed', borderColor: tc.border, borderRadius: borderRadius.md, paddingVertical: 12, marginTop: spacing.sm },
   addDashedText: { fontSize: 13, color: tc.mutedForeground },
+  guideCard: { marginTop: spacing.sm, marginHorizontal: 0, paddingHorizontal: spacing.md, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1, gap: 4 },
+  guideHeading: { fontSize: 14, fontWeight: '700', paddingRight: spacing.lg },
+  guideMessage: { fontSize: 13, lineHeight: 19, paddingRight: spacing.lg },
+  guideClose: { position: 'absolute' as const, top: 10, right: 10, padding: 2 },
   equipList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   equipChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: tc.background, borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 6, borderWidth: 1, borderColor: tc.border },
   equipText: { fontSize: 13, color: tc.foreground },

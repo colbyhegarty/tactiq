@@ -36,7 +36,7 @@ import { awaitPrefetch, clearCache, didPrefetchFail } from '../../src/lib/drillC
 import { isDrillSaved, removeDrill, saveDrill } from '../../src/lib/storage';
 import { PaywallModal, PreviewBanner, usePaywallGate, useSubscription, isDrillFree } from '../../src/subscription';
 import { MAX_PREVIEW_VIEWS } from '../../src/subscription/proPreview';
-import { useOnboarding, SpotlightOverlay, CoachCard, useMeasure } from '../../src/onboarding';
+import { useOnboarding, CoachCard } from '../../src/onboarding';
 import { borderRadius, spacing } from '../../src/theme/colors';
 import { useTheme } from '../../src/theme/ThemeContext';
 import { Drill } from '../../src/types/drill';
@@ -52,7 +52,6 @@ export default function LibraryScreen() {
   const { selectedGoal, showGuide, guideStep, completeGuide, dismissCoachMark, onboardingSessionId, proPreviewExtended, seenFeatures, markFeatureSeen } = useOnboarding();
   const filterToggleRef = useRef<View>(null);
   const filterToggleFn = useRef<(() => void) | null>(null);
-  const { layout: filterLayout, onLayout: filterOnLayout } = useMeasure(filterToggleRef, [showGuide]);
   // Auto-dismiss coach cards when user demonstrates library understanding
   const [coachDismissedByInteraction, setCoachDismissedByInteraction] = useState(false);
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
@@ -490,7 +489,6 @@ export default function LibraryScreen() {
           resultCount={allDrills.length}
           isLoading={isLoading}
           filterToggleRef={filterToggleRef}
-          filterToggleOnLayout={filterOnLayout}
           toggleRef={filterToggleFn}
           onFiltersToggle={(open) => { if (open) dismissCoachByInteraction(); }}
           onSearchFocus={dismissCoachByInteraction}
