@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
+  InteractionManager,
   Modal,
   StyleSheet,
   Text,
@@ -120,10 +121,12 @@ export function useMeasure(ref: React.RefObject<any>, deps: any[] = []) {
           setLayout(measured);
           lastRaw.current = measured;
         } else {
-          // First valid measurement or position changed — record and re-check
+          // First valid measurement or position changed — record and re-check.
+          // 150ms gap gives layout shifts (canvas sizing, safe-area insets)
+          // time to settle so the stability check catches them.
           lastRaw.current = measured;
           if (attempt < 20) {
-            retryTimer.current = setTimeout(() => measure(attempt + 1), 80);
+            retryTimer.current = setTimeout(() => measure(attempt + 1), 150);
           } else {
             // Max attempts — accept the last valid measurement
             setLayout(measured);
@@ -140,16 +143,24 @@ export function useMeasure(ref: React.RefObject<any>, deps: any[] = []) {
     setLayout(null);
     clearRetry();
 
-    // Use requestAnimationFrame to wait for the current frame's layout pass,
-    // then start measuring — avoids reading stale pre-layout coordinates
-    const raf = requestAnimationFrame(() => {
-      measure(0);
+    // Wait for in-flight interactions (React Navigation screen transitions,
+    // LayoutAnimations, etc.) to finish before measuring. Without this,
+    // measureInWindow can return coordinates mid-transition that pass the
+    // stability check (two readings 80ms apart agree during a smooth
+    // animation) but point to the wrong position.
+    const task = InteractionManager.runAfterInteractions(() => {
+      if (cancelledRef.current) return;
+      // One more rAF so the post-interaction layout pass has committed
+      requestAnimationFrame(() => {
+        if (cancelledRef.current) return;
+        measure(0);
+      });
     });
 
     return () => {
       cancelledRef.current = true;
       clearRetry();
-      cancelAnimationFrame(raf);
+      task.cancel();
     };
   }, deps);
 
