@@ -10,16 +10,16 @@ import {
   Lightbulb,
   Play,
   Plus,
-  PlusCircle,
+
   RefreshCw,
   Sparkles,
   Users,
   X,
 } from 'lucide-react-native';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable,
+  Dimensions, KeyboardAvoidingView, Modal, NativeScrollEvent, NativeSyntheticEvent, Platform, Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,7 +32,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { track } from '../lib/analytics';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
 import { generateActivityId, getSession, getSessions, saveSession, updateSession } from '../lib/sessionStorage';
-import { useOnboarding, CoachCard } from '../onboarding';
+import { useOnboarding } from '../onboarding';
 import { borderRadius, spacing } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { Drill } from '../types/drill';
@@ -256,20 +256,28 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
   const { colors: tc } = useTheme();
   const s = create_s(tc);
   const router = useRouter();
-  const { showGuide, selectedGoal, onboardingSessionId, advanceGuide, dismissCoachMark } = useOnboarding();
+  const { showGuide, selectedGoal, onboardingSessionId, advanceGuide } = useOnboarding();
   const [viewMode, setViewMode] = useState<'static' | 'animated'>('animated');
   const [activeTab, setActiveTab] = useState<TabKey>('setup');
   const [addToSessionVisible, setAddToSessionVisible] = useState(false);
-  const [coachHintDismissed, setCoachHintDismissed] = useState(false);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
 
   const isBuildPractice = showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId;
 
-  // Reset coach hint when drill changes
-  useEffect(() => {
-    setCoachHintDismissed(false);
-  }, [drill?.id]);
+  // Track whether the in-scroll "Add to Practice" button is visible (to hide the sticky CTA)
+  const addBtnY = useRef<number>(0);
+  const scrollViewHeight = useRef<number>(0);
+  const [inlineAddVisible, setInlineAddVisible] = useState(false);
+
+  const handleScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!isBuildPractice) return;
+    const scrollY = e.nativeEvent.contentOffset.y;
+    const viewHeight = e.nativeEvent.layoutMeasurement.height;
+    // Button is visible when its top is within the scroll viewport
+    const visible = addBtnY.current > 0 && addBtnY.current < scrollY + viewHeight;
+    setInlineAddVisible(visible);
+  }, [isBuildPractice]);
 
   useEffect(() => {
     if (isOpen) {
@@ -372,7 +380,7 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
           <View style={s.handleContainer}><View style={s.handle} /></View>
           <TouchableOpacity style={s.closeButton} onPress={handleClose}><X size={24} color={tc.foreground} /></TouchableOpacity>
 
-          <ScrollView style={s.scrollView} contentContainerStyle={s.scrollContent} showsVerticalScrollIndicator={false}>
+          <ScrollView style={s.scrollView} contentContainerStyle={[s.scrollContent, isBuildPractice && { paddingBottom: spacing.xl + 100 }]} showsVerticalScrollIndicator={false} onScroll={isBuildPractice ? handleScroll : undefined} scrollEventThrottle={isBuildPractice ? 16 : undefined}>
             {/* Title */}
             <Text style={s.title}>{drill.name}</Text>
 
@@ -460,16 +468,6 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
               </View>
             )}
 
-            {/* Build Practice coach hint */}
-            {isBuildPractice && !coachHintDismissed && (
-              <CoachCard
-                icon={PlusCircle}
-                title="Add it to your practice"
-                description="Add this drill to the session you're building."
-                onDismiss={() => setCoachHintDismissed(true)}
-              />
-            )}
-
             {/* Actions */}
             <View style={s.actionButtons}>
               {onSave && (
@@ -485,11 +483,31 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
                 </TouchableOpacity>
               )}
             </View>
-            <TouchableOpacity style={s.addToSessionBtn} onPress={handleAddToSession}>
+            <TouchableOpacity
+              style={s.addToSessionBtn}
+              onPress={handleAddToSession}
+              onLayout={isBuildPractice ? (e) => { addBtnY.current = e.nativeEvent.layout.y; } : undefined}
+            >
               <CalendarPlus size={18} color={tc.primaryForeground} />
               <Text style={s.addToSessionBtnText}>{isBuildPractice ? 'Add to Your Practice' : 'Add to Session'}</Text>
             </TouchableOpacity>
           </ScrollView>
+
+          {/* Sticky onboarding CTA — visible until user scrolls to the inline button */}
+          {isBuildPractice && !inlineAddVisible && (
+            <View style={s.stickyCtaContainer}>
+              <View style={s.stickyCtaInner}>
+                <View style={s.stickyCtaText}>
+                  <Text style={s.stickyCtaHeading}>Building your practice</Text>
+                  <Text style={s.stickyCtaMessage}>Review the drill, then add it when you're ready.</Text>
+                </View>
+                <TouchableOpacity style={s.stickyCtaButton} onPress={handleAddToSession} activeOpacity={0.7}>
+                  <CalendarPlus size={16} color={tc.primaryForeground} />
+                  <Text style={s.stickyCtaButtonText}>Add to Practice</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </Animated.View>
       {drill && (
@@ -553,4 +571,11 @@ function create_s(tc: any) { return StyleSheet.create({
   actionButtonOutlineText: { fontSize: 14, fontWeight: '600', color: tc.primary },
   addToSessionBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, paddingVertical: 14, borderRadius: borderRadius.md, marginTop: spacing.sm },
   addToSessionBtnText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
+  stickyCtaContainer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: tc.background, borderTopWidth: 1, borderTopColor: tc.border, paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.lg },
+  stickyCtaInner: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  stickyCtaText: { flex: 1, gap: 2 },
+  stickyCtaHeading: { fontSize: 13, fontWeight: '700', color: tc.foreground },
+  stickyCtaMessage: { fontSize: 11, lineHeight: 15, color: tc.mutedForeground },
+  stickyCtaButton: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: tc.primary, paddingVertical: 10, paddingHorizontal: spacing.md, borderRadius: borderRadius.md },
+  stickyCtaButtonText: { fontSize: 13, fontWeight: '600', color: tc.primaryForeground },
 }); };

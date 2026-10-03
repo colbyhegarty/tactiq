@@ -24,7 +24,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, CoachTooltip, useMeasure } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -58,9 +58,7 @@ export default function DrillEditorScreen() {
 
   // Onboarding phase tracking for create_drill flow
   const [toolsEverOpened, setToolsEverOpened] = useState(false);
-  const [detailsEverOpened, setDetailsEverOpened] = useState(false);
   const [detailsHintDismissed, setDetailsHintDismissed] = useState(false);
-  const hasCanvasContent = diagram.players.length > 0 || diagram.cones.length > 0 || diagram.balls.length > 0 || diagram.goals.length > 0;
 
   // Undo history — stores previous diagram states (max 50)
   const undoStack = useRef<DiagramData[]>([]);
@@ -115,9 +113,7 @@ export default function DrillEditorScreen() {
 
   // Refs for spotlight targets
   const toolsHeaderRef = useRef<View>(null);
-  const detailsHeaderRef = useRef<View>(null);
   const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen]);
-  const detailsHeaderLayout = useMeasure(detailsHeaderRef, [showGuide, guideStep, detailsOpen]);
 
   // Guide completes when drill is saved (handled in handleSave)
 
@@ -278,17 +274,6 @@ export default function DrillEditorScreen() {
         nonBlocking
       />
 
-      {/* Phase 2: After canvas interaction, highlight Drill Details accordion */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'create_drill' && toolsEverOpened && hasCanvasContent && !detailsEverOpened && !detailsHintDismissed}
-        target={detailsHeaderLayout}
-        heading="Finish your drill"
-        message="Add a name and any details you'd like, then save."
-        tooltipPosition="above"
-        onSkip={() => setDetailsHintDismissed(true)}
-        nonBlocking
-      />
-
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           ref={scrollRef}
@@ -342,16 +327,23 @@ export default function DrillEditorScreen() {
           )}
 
           {/* Drill Details - collapsible */}
-          <TouchableOpacity ref={detailsHeaderRef} style={[e.sectionToggle, detailsOpen && e.sectionToggleOpen]} onPress={() => {
-            const willOpen = !detailsOpen;
+          <TouchableOpacity style={[e.sectionToggle, detailsOpen && e.sectionToggleOpen]} onPress={() => {
             toggle(setDetailsOpen);
-            if (willOpen) setDetailsEverOpened(true);
           }} activeOpacity={0.7}>
             <Text style={e.sectionToggleText}>Drill Details</Text>
             {detailsOpen ? <ChevronUp size={16} color={tc.mutedForeground} /> : <ChevronDown size={16} color={tc.mutedForeground} />}
           </TouchableOpacity>
           {detailsOpen && (
             <View style={e.sectionBody}>
+              {/* Onboarding hint — shown first time Details is opened during create_drill flow */}
+              {showGuide && selectedGoal === 'create_drill' && !detailsHintDismissed && (
+                <CoachTooltip
+                  heading="Finish your drill"
+                  message="Add a name and any details you'd like, then save."
+                  buttonText="Got it"
+                  onDismiss={() => setDetailsHintDismissed(true)}
+                />
+              )}
               <View style={e.sectionBodyInner}>
                 <View style={e.formRow}>
                   <View style={e.formField}><Text style={e.formLabel}>Drill Name *</Text><TextInput style={e.formInput} value={formData.name} onChangeText={v => handleFormChange('name', v)} placeholder="Enter drill name" placeholderTextColor={tc.mutedForeground} /></View>

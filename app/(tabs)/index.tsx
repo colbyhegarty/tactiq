@@ -51,6 +51,7 @@ export default function LibraryScreen() {
   const filterToggleRef = useRef<View>(null);
   const filterToggleFn = useRef<(() => void) | null>(null);
   const filterLayout = useMeasure(filterToggleRef, [showGuide]);
+  const [libraryHintDismissed, setLibraryHintDismissed] = useState(false);
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
   const [previewBannerRemaining, setPreviewBannerRemaining] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
@@ -500,13 +501,16 @@ export default function LibraryScreen() {
       )}
 
       {/* CoachCard — build_practice Library hint (positioned near search/filter area) */}
-      {showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId && (
+      {showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId && !libraryHintDismissed && (
         <View style={{ paddingHorizontal: spacing.md, marginTop: -spacing.xs }}>
           <CoachCard
             icon={Target}
             title="Choose a drill"
             description="Browse, search, or filter to find one that fits your practice."
-            onDismiss={dismissCoachMark}
+            onDismiss={() => {
+              setLibraryHintDismissed(true);
+              track('onboarding_library_hint_dismissed', { goal: 'build_practice' });
+            }}
           />
         </View>
       )}

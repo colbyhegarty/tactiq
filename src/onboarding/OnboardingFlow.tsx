@@ -40,7 +40,7 @@ const GOALS: GoalOption[] = [
     key: 'find_drills',
     icon: Library,
     title: 'Find the right drill',
-    subtitle: 'Browse 100+ drills by category, age group & more',
+    subtitle: 'Browse 300+ drills by category, age group & more',
   },
   {
     key: 'create_drill',
