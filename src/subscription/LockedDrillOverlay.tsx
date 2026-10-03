@@ -16,10 +16,23 @@ export function LockedDrillOverlay() {
       {/* Dark frost layer — simulates blur without native blur dependency */}
       <View style={s.frost} />
       {/* Lock badge */}
-      <View style={s.badge}>
-        <Crown size={14} color="#fff" />
-        <Text style={s.badgeText}>PRO</Text>
-      </View>
+      <ProBadge />
+    </View>
+  );
+}
+
+/** Dark frost tint applied over a locked drill's diagram. */
+export const LOCKED_FROST_COLOR = 'rgba(21, 24, 35, 0.65)';
+
+/**
+ * The green PRO pill on its own, with no positioning, so a parent can place it
+ * in the same slot used by other diagram overlay actions.
+ */
+export function ProBadge() {
+  return (
+    <View style={s.badge}>
+      <Crown size={14} color="#fff" />
+      <Text style={s.badgeText}>PRO</Text>
     </View>
   );
 }
@@ -41,7 +54,7 @@ const s = StyleSheet.create({
   },
   frost: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(21, 24, 35, 0.65)',
+    backgroundColor: LOCKED_FROST_COLOR,
   },
   badge: {
     flexDirection: 'row',
