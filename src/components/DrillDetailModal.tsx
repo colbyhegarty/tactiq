@@ -227,7 +227,7 @@ function AddToSessionModal({ visible, drill, onClose }: AddToSessionModalProps) 
 }
 
 function create_ats(tc: any, bottomInset: number = 0) { return StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.6)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.6)' },
   kavWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, maxHeight: '85%' },
   sheet: { backgroundColor: tc.background, borderTopLeftRadius: borderRadius.xl, borderTopRightRadius: borderRadius.xl, flex: 1 },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: tc.border, alignSelf: 'center', marginTop: 8, marginBottom: 4 },
@@ -516,7 +516,7 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
 }
 
 function create_s(tc: any) { return StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0, 0, 0, 0.6)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0, 0, 0, 0.6)' },
   modalContainer: { flex: 1, justifyContent: 'flex-end' },
   modal: { backgroundColor: tc.background, borderTopLeftRadius: 0, borderTopRightRadius: 0, maxHeight: SCREEN_HEIGHT, minHeight: SCREEN_HEIGHT, paddingTop: 56 },
   handleContainer: { alignItems: 'center', paddingVertical: spacing.sm },

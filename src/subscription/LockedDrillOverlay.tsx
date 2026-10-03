@@ -34,13 +34,13 @@ export function LockIcon({ size = 14 }: { size?: number }) {
 
 const s = StyleSheet.create({
   container: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     zIndex: 15,
     justifyContent: 'center',
     alignItems: 'center',
   },
   frost: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(21, 24, 35, 0.65)',
   },
   badge: {

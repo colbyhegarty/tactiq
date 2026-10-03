@@ -59,7 +59,7 @@ export function QuickPreviewModal({ drill, isOpen, onClose, onViewFull, isSaved,
 }
 
 function create_s(tc: any) { return StyleSheet.create({
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.5)' },
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
   card: { backgroundColor: tc.card, borderRadius: borderRadius.xl, width: '100%', maxWidth: 360, overflow: 'hidden', borderWidth: 1, borderColor: tc.border },
   closeBtn: { position: 'absolute', top: 12, right: 12, zIndex: 10, width: 32, height: 32, borderRadius: 16, backgroundColor: tc.background, justifyContent: 'center', alignItems: 'center' },
