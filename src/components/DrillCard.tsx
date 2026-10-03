@@ -1,5 +1,5 @@
 import { Image } from 'expo-image';
-import { Bookmark, BookmarkCheck, Clock, Eye, Search, Target, Users } from 'lucide-react-native';
+import { Bookmark, BookmarkCheck, Clock, Crown, Eye, Search, Target, Users } from 'lucide-react-native';
 import React, { memo, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { getCategoryColor, getDifficultyColor } from '../lib/api';
-import { LockedDrillOverlay } from '../subscription/LockedDrillOverlay';
 import { borderRadius, spacing } from '../theme/colors';
 import { useTheme } from '../theme/ThemeContext';
 import { Drill } from '../types/drill';
@@ -162,6 +161,7 @@ function DrillCardInner({
             </TouchableOpacity>
           )}
 
+          {/* Unlocked: tap-activated action buttons */}
           {showOverlay && !isLocked && (
             <View style={styles.overlay}>
               {onQuickView && (
@@ -188,8 +188,17 @@ function DrillCardInner({
               </TouchableOpacity>
             </View>
           )}
+
+          {/* Locked: permanent PRO badge at the same Y as the action buttons */}
+          {isLocked && (
+            <View style={styles.lockedOverlay} pointerEvents="none">
+              <View style={styles.proBadge}>
+                <Crown size={14} color="#fff" />
+                <Text style={styles.proBadgeText}>PRO</Text>
+              </View>
+            </View>
+          )}
         </Pressable>
-        {isLocked && <LockedDrillOverlay />}
       </View>
 
       {/* Content */}
@@ -328,4 +337,17 @@ function create_styles(tc: any) { return StyleSheet.create({
   },
   overlayBtnCompact: { paddingHorizontal: 12, paddingVertical: 12, borderRadius: 22 },
   overlayBtnGreenText: { color: '#fff', fontSize: 13, fontWeight: '600' },
+  lockedOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(21, 24, 35, 0.65)',
+    justifyContent: 'center', alignItems: 'center',
+    zIndex: 15,
+  },
+  proBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(74, 157, 110, 0.9)',
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: borderRadius.full,
+  },
+  proBadgeText: { fontSize: 12, fontWeight: '700', color: '#fff', letterSpacing: 1 },
 }); };
