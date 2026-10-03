@@ -40,6 +40,8 @@ interface DrillFiltersProps {
   isLoading?: boolean;
   /** Called when the filter panel is opened/closed */
   onFiltersToggle?: (open: boolean) => void;
+  /** Called when the search input receives focus */
+  onSearchFocus?: () => void;
   /** Ref forwarded to the filter toggle button for measurement */
   filterToggleRef?: React.Ref<View>;
   /** Imperative ref to programmatically toggle filters */
@@ -55,6 +57,7 @@ export function DrillFilters({
   resultCount,
   isLoading,
   onFiltersToggle,
+  onSearchFocus,
   filterToggleRef,
   toggleRef,
 }: DrillFiltersProps) {
@@ -278,6 +281,7 @@ export function DrillFilters({
           placeholderTextColor={tc.mutedForeground}
           value={searchText}
           onChangeText={handleSearchChange}
+          onFocus={onSearchFocus}
           returnKeyType="search"
         />
         {searchText ? (

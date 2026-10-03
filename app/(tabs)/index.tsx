@@ -4,6 +4,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ActivityIndicator,
   FlatList,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   RefreshControl,
   StatusBar,
   StyleSheet,
@@ -52,6 +54,8 @@ export default function LibraryScreen() {
   const filterToggleFn = useRef<(() => void) | null>(null);
   const filterLayout = useMeasure(filterToggleRef, [showGuide]);
   const [libraryHintDismissed, setLibraryHintDismissed] = useState(false);
+  // Auto-dismiss coach cards when user demonstrates library understanding
+  const [coachDismissedByInteraction, setCoachDismissedByInteraction] = useState(false);
   const [showPreviewBanner, setShowPreviewBanner] = useState(false);
   const [previewBannerRemaining, setPreviewBannerRemaining] = useState(0);
   const [categories, setCategories] = useState<string[]>([]);
@@ -71,6 +75,24 @@ export default function LibraryScreen() {
   const [page, setPage] = useState(1);
 
   const flatListRef = useRef<FlatList>(null);
+
+  // ── Auto-dismiss coach cards on library interaction ──────────────
+  const dismissCoachByInteraction = useCallback(() => {
+    if (!showGuide || coachDismissedByInteraction) return;
+    setCoachDismissedByInteraction(true);
+    if (selectedGoal === 'build_practice') {
+      setLibraryHintDismissed(true);
+      track('onboarding_library_hint_dismissed', { goal: 'build_practice', trigger: 'interaction' });
+    } else if (selectedGoal === 'find_drills') {
+      track('onboarding_library_hint_dismissed', { goal: 'find_drills', trigger: 'interaction' });
+    }
+  }, [showGuide, coachDismissedByInteraction, selectedGoal]);
+
+  const handleListScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (e.nativeEvent.contentOffset.y > 40) {
+      dismissCoachByInteraction();
+    }
+  }, [dismissCoachByInteraction]);
 
   useEffect(() => {
     warmUpBackend();
@@ -226,6 +248,9 @@ export default function LibraryScreen() {
   }, []);
 
   const handleViewDrill = useCallback(async (drill: Drill) => {
+    // Dismiss coach card when user taps a drill (demonstrates understanding)
+    dismissCoachByInteraction();
+
     // Complete find_drills guide when first drill is opened
     if (showGuide && selectedGoal === 'find_drills') {
       completeGuide();
@@ -282,7 +307,7 @@ export default function LibraryScreen() {
     // Preview exhausted — show paywall
     track('locked_drill_tapped', { drill_id: drill.id, drill_name: drill.name });
     await gate('view_locked_drill');
-  }, [subscription.isProUser, previewState, tryPreviewDrill, gate, loadAndShowDrill, showGuide, selectedGoal, completeGuide, proPreviewExtended]);
+  }, [subscription.isProUser, previewState, tryPreviewDrill, gate, loadAndShowDrill, showGuide, selectedGoal, completeGuide, proPreviewExtended, dismissCoachByInteraction]);
 
   const handleSaveDrill = useCallback(async (drill: Drill) => {
     const currentlySaved = savedState[drill.id] ?? (await isDrillSaved(drill.id));
@@ -467,7 +492,8 @@ export default function LibraryScreen() {
           isLoading={isLoading}
           filterToggleRef={filterToggleRef}
           toggleRef={filterToggleFn}
-          onFiltersToggle={() => {}}
+          onFiltersToggle={(open) => { if (open) dismissCoachByInteraction(); }}
+          onSearchFocus={dismissCoachByInteraction}
         />
         <View style={styles.viewToggleRow}>
           <View style={{ flex: 1 }} />
@@ -489,7 +515,7 @@ export default function LibraryScreen() {
       </View>
 
       {/* CoachCard — find_drills hint (positioned near search/filter area) */}
-      {showGuide && selectedGoal === 'find_drills' && (
+      {showGuide && selectedGoal === 'find_drills' && !coachDismissedByInteraction && (
         <View style={{ paddingHorizontal: spacing.md, marginTop: -spacing.xs }}>
           <CoachCard
             icon={Search}
@@ -509,7 +535,7 @@ export default function LibraryScreen() {
             description="Browse, search, or filter to find one that fits your practice."
             onDismiss={() => {
               setLibraryHintDismissed(true);
-              track('onboarding_library_hint_dismissed', { goal: 'build_practice' });
+              track('onboarding_library_hint_dismissed', { goal: 'build_practice', trigger: 'manual' });
             }}
           />
         </View>
@@ -538,6 +564,8 @@ export default function LibraryScreen() {
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="none"
         showsVerticalScrollIndicator={false}
+        onScroll={handleListScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
