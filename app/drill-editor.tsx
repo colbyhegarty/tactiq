@@ -112,7 +112,7 @@ export default function DrillEditorScreen() {
 
   // Refs for spotlight targets
   const toolsHeaderRef = useRef<View>(null);
-  const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen]);
+  const toolsHeaderLayout = useMeasure(toolsHeaderRef, [showGuide, guideStep, toolsOpen, loading]);
 
   // Guide completes when drill is saved (handled in handleSave)
 
