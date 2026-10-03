@@ -2,7 +2,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { Calendar, CalendarDays, ChevronLeft, ChevronRight, Clock, Copy, Edit, Plus, Trash2, Users, X } from 'lucide-react-native';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
-  Alert, LayoutAnimation, Platform, Pressable, ScrollView, StatusBar,
+  Alert, LayoutAnimation, Platform, ScrollView, StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -306,9 +306,26 @@ export default function SessionsScreen() {
             <Text style={st.emptyTitle}>{filterDate ? 'No sessions on this day' : 'No sessions yet'}</Text>
             <Text style={st.emptySubtitle}>{filterDate ? 'Try selecting a different date' : 'Create your first training session'}</Text>
             {!filterDate && (
-              <TouchableOpacity style={st.createButton} onPress={handleCreateSession}>
-                <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
-              </TouchableOpacity>
+              <View style={showSessionGuide ? st.guideWrapper : undefined}>
+                {showSessionGuide && (
+                  <View style={[st.guideBorder, { borderColor: tc.primary }]} pointerEvents="none" />
+                )}
+                <TouchableOpacity style={st.createButton} onPress={() => {
+                  if (showSessionGuide) advanceGuide();
+                  handleCreateSession();
+                }}>
+                  <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
+                </TouchableOpacity>
+                {showSessionGuide && (
+                  <View style={[st.guideOverlay, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
+                    <Text style={[st.guideHeading, { color: tc.foreground }]}>Create your first session</Text>
+                    <Text style={[st.guideMessage, { color: tc.mutedForeground }]}>Start building your practice plan.</Text>
+                    <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={st.guideClose}>
+                      <X size={14} color={tc.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
             )}
           </View>
         ) : (
@@ -320,27 +337,6 @@ export default function SessionsScreen() {
           </>
         )}
       </ScrollView>
-
-      {showSessionGuide && (
-        <View style={st.guideBackdrop}>
-          <Pressable style={st.guideDarkOverlay} onPress={dismissCoachMark} />
-          <View style={st.guideCenter} pointerEvents="box-none">
-            <View style={{ position: 'relative' as const }}>
-              <View style={[st.guideBorder, { borderColor: tc.primary }]} pointerEvents="none" />
-              <TouchableOpacity style={st.createButton} onPress={() => { advanceGuide(); handleCreateSession(); }}>
-                <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
-              </TouchableOpacity>
-            </View>
-            <View style={[st.guideOverlay, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
-              <Text style={[st.guideHeading, { color: tc.foreground }]}>Create your first session</Text>
-              <Text style={[st.guideMessage, { color: tc.mutedForeground }]}>Start building your practice plan.</Text>
-              <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={st.guideClose}>
-                <X size={14} color={tc.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
 
       <PaywallModal
         visible={paywallVisible}
@@ -377,11 +373,9 @@ function create_st(tc: any) { return StyleSheet.create({
   emptySubtitle: { fontSize: 14, color: tc.mutedForeground, marginBottom: spacing.lg },
   createButton: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: tc.primary, paddingVertical: 12, paddingHorizontal: spacing.lg, borderRadius: borderRadius.md },
   createButtonText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
-  guideBackdrop: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, zIndex: 999 },
-  guideDarkOverlay: { position: 'absolute' as const, top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.65)' },
-  guideCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: spacing.lg },
-  guideBorder: { position: 'absolute' as const, top: -8, left: -8, right: -8, bottom: -8, borderWidth: 2, borderRadius: 10 },
-  guideOverlay: { marginTop: 12, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, gap: 4, width: '100%' },
+  guideWrapper: { position: 'relative' as const, zIndex: 10, overflow: 'visible' as const },
+  guideBorder: { position: 'absolute' as const, top: -8, left: -8, right: -8, bottom: -8, borderWidth: 2, borderRadius: 10, zIndex: 1 },
+  guideOverlay: { position: 'absolute' as const, top: '100%', left: -spacing.md, right: -spacing.md, marginTop: 12, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, gap: 4, zIndex: 20 },
   guideHeading: { fontSize: 16, fontWeight: '700', paddingRight: spacing.lg },
   guideMessage: { fontSize: 13, lineHeight: 19, paddingRight: spacing.lg },
   guideClose: { position: 'absolute' as const, top: 12, right: 12, padding: 2 },

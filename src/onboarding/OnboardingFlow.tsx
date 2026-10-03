@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated,
@@ -63,6 +64,7 @@ interface OnboardingFlowProps {
 export function OnboardingFlow({ visible }: OnboardingFlowProps) {
   const { colors } = useTheme();
   const { completeOnboarding } = useOnboarding();
+  const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(30)).current;
   const [cardAnims] = useState(() =>
@@ -100,6 +102,11 @@ export function OnboardingFlow({ visible }: OnboardingFlowProps) {
   }, [visible]);
 
   const handleGoalSelect = (goal: OnboardingGoal) => {
+    // Navigate before completing onboarding so the target screen is already
+    // pushing in while the modal fades — prevents a flash of the Library tab.
+    if (goal === 'create_drill') {
+      router.push('/drill-editor');
+    }
     completeOnboarding(goal);
   };
 

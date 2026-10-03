@@ -54,9 +54,7 @@ function RootStack() {
           router.replace('/');
           break;
         case 'create_drill':
-          // Go straight to the drill editor — single transition, no flash.
-          // The back button in drill-editor handles navigating to /create.
-          router.push('/drill-editor');
+          // Handled by OnboardingFlow before modal dismisses — no action needed here.
           break;
         case 'explore':
         default:
