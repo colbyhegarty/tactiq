@@ -464,8 +464,8 @@ export function DrillDetailModal({ drill, isOpen, onClose, isSaved = false, onSa
             {isBuildPractice && !coachHintDismissed && (
               <CoachCard
                 icon={PlusCircle}
-                title="Add this drill to your practice"
-                description="Tap the button below to add this drill to your session."
+                title="Add it to your practice"
+                description="Add this drill to the session you're building."
                 onDismiss={() => setCoachHintDismissed(true)}
               />
             )}

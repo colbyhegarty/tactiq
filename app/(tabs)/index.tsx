@@ -487,25 +487,25 @@ export default function LibraryScreen() {
         </View>
       </View>
 
-      {/* CoachCard — find_drills hint */}
+      {/* CoachCard — find_drills hint (positioned near search/filter area) */}
       {showGuide && selectedGoal === 'find_drills' && (
-        <View style={{ paddingHorizontal: spacing.md }}>
+        <View style={{ paddingHorizontal: spacing.md, marginTop: -spacing.xs }}>
           <CoachCard
             icon={Search}
             title="Find the right drill"
-            description="Browse the library, search, or use filters to discover drills. Tap any drill to see the details."
+            description="Browse, search, or filter to find something for your next practice."
             onDismiss={dismissCoachMark}
           />
         </View>
       )}
 
-      {/* CoachCard — build_practice Library hint */}
+      {/* CoachCard — build_practice Library hint (positioned near search/filter area) */}
       {showGuide && selectedGoal === 'build_practice' && !!onboardingSessionId && (
-        <View style={{ paddingHorizontal: spacing.md }}>
+        <View style={{ paddingHorizontal: spacing.md, marginTop: -spacing.xs }}>
           <CoachCard
             icon={Target}
-            title="Choose a drill for your practice"
-            description="Browse or search for a drill, then tap it to see details and add it to your session."
+            title="Choose a drill"
+            description="Browse, search, or filter to find one that fits your practice."
             onDismiss={dismissCoachMark}
           />
         </View>

@@ -283,7 +283,7 @@ export default function SessionsScreen() {
         visible={showGuide && selectedGoal === 'build_practice' && guideStep === 0}
         target={createBtnLayout}
         heading="Create your first session"
-        message="Tap this button to get started building a practice plan."
+        message="Start building your practice plan."
         onTargetPress={() => {
           advanceGuide();
           handleCreateSession();

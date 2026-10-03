@@ -1,9 +1,9 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, ChevronDown, ChevronUp, Save, Trash2, Wrench, X } from 'lucide-react-native';
+import { ArrowLeft, ChevronDown, ChevronUp, Save, Trash2 } from 'lucide-react-native';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
-  Dimensions,
+
   FlatList,
   KeyboardAvoidingView,
   LayoutAnimation,
@@ -24,7 +24,7 @@ import { DiagramCanvas } from '../src/components/editor/DiagramCanvas';
 import { PropertiesPanel } from '../src/components/editor/PropertiesPanel';
 import { ToolsPanel } from '../src/components/editor/ToolsPanel';
 import { track, trackScreen } from '../src/lib/analytics';
-import { useOnboarding, CoachCard, useMeasure } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
 import { DIFFICULTIES, fetchDrillById, fetchFilterOptions } from '../src/lib/api';
 import { getCustomDrill, getEmptyDiagram, getEmptyFormData, saveCustomDrill, updateCustomDrill } from '../src/lib/customDrillStorage';
 import { borderRadius, spacing } from '../src/theme/colors';
@@ -56,12 +56,11 @@ export default function DrillEditorScreen() {
   const [dropdownField, setDropdownField] = useState<'category' | 'difficulty' | null>(null);
   const { selectedGoal, showGuide, guideStep, advanceGuide, completeGuide, dismissCoachMark } = useOnboarding();
 
-  // Track first-time opening of each section for floating tips
-  const [toolsTipShown, setToolsTipShown] = useState(false);
-  const [detailsTipShown, setDetailsTipShown] = useState(false);
-  const [toolsTipVisible, setToolsTipVisible] = useState(false);
-  const [detailsTipVisible, setDetailsTipVisible] = useState(false);
-  const [coachHintDismissed, setCoachHintDismissed] = useState(false);
+  // Onboarding phase tracking for create_drill flow
+  const [toolsEverOpened, setToolsEverOpened] = useState(false);
+  const [detailsEverOpened, setDetailsEverOpened] = useState(false);
+  const [detailsHintDismissed, setDetailsHintDismissed] = useState(false);
+  const hasCanvasContent = diagram.players.length > 0 || diagram.cones.length > 0 || diagram.balls.length > 0 || diagram.goals.length > 0;
 
   // Undo history — stores previous diagram states (max 50)
   const undoStack = useRef<DiagramData[]>([]);
@@ -246,12 +245,6 @@ export default function DrillEditorScreen() {
     router.back();
   };
 
-  // Dismiss any visible per-dropdown tip (called when user taps elsewhere / another section)
-  const dismissAllTips = useCallback(() => {
-    setToolsTipVisible(false);
-    setDetailsTipVisible(false);
-  }, []);
-
   const toggle = (setter: React.Dispatch<React.SetStateAction<boolean>>) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setter(v => !v);
@@ -274,47 +267,27 @@ export default function DrillEditorScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* CoachCard hint for create_drill onboarding */}
-      {showGuide && selectedGoal === 'create_drill' && !coachHintDismissed && (
-        <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.xs }}>
-          <CoachCard
-            icon={Wrench}
-            title="Build your drill"
-            description="Use the Tools section to add players, cones, and goals to your diagram. Then fill in Drill Details and save."
-            onDismiss={() => setCoachHintDismissed(true)}
-          />
-        </View>
-      )}
+      {/* Phase 1: Highlight Tools accordion before it's been opened */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'create_drill' && !toolsEverOpened}
+        target={toolsHeaderLayout}
+        heading="Build your drill"
+        message="Open Tools to add players, cones, goals, and movements."
+        tooltipPosition="above"
+        onSkip={dismissCoachMark}
+        nonBlocking
+      />
 
-      {/* Floating tip when Tools section is first opened — no border */}
-      {toolsTipVisible && toolsHeaderLayout && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="box-none">
-          <View style={{ position: 'absolute', bottom: Dimensions.get('window').height - toolsHeaderLayout.y + 12, left: 0, right: 0, paddingHorizontal: spacing.md }} pointerEvents="box-none">
-            <View style={{ marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: tc.primary, backgroundColor: tc.card, gap: 4 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: tc.foreground, paddingRight: spacing.lg }}>Tools</Text>
-              <Text style={{ fontSize: 13, lineHeight: 19, color: tc.mutedForeground, paddingRight: spacing.lg }}>Add players, cones, goals, and arrows to your diagram. Use select to reposition elements.</Text>
-              <TouchableOpacity onPress={dismissAllTips} hitSlop={12} style={{ position: 'absolute', top: 12, right: 12, padding: 2 }}>
-                <X size={14} color={tc.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Floating tip when Drill Details section is first opened — no border */}
-      {detailsTipVisible && detailsHeaderLayout && (
-        <View style={[StyleSheet.absoluteFill, { zIndex: 999 }]} pointerEvents="box-none">
-          <View style={{ position: 'absolute', bottom: Dimensions.get('window').height - detailsHeaderLayout.y + 12, left: 0, right: 0, paddingHorizontal: spacing.md }} pointerEvents="box-none">
-            <View style={{ marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, borderColor: tc.primary, backgroundColor: tc.card, gap: 4 }}>
-              <Text style={{ fontSize: 16, fontWeight: '700', color: tc.foreground, paddingRight: spacing.lg }}>Drill Details</Text>
-              <Text style={{ fontSize: 13, lineHeight: 19, color: tc.mutedForeground, paddingRight: spacing.lg }}>Name your drill, set category and difficulty, and add coaching notes.</Text>
-              <TouchableOpacity onPress={dismissAllTips} hitSlop={12} style={{ position: 'absolute', top: 12, right: 12, padding: 2 }}>
-                <X size={14} color={tc.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      )}
+      {/* Phase 2: After canvas interaction, highlight Drill Details accordion */}
+      <SpotlightOverlay
+        visible={showGuide && selectedGoal === 'create_drill' && toolsEverOpened && hasCanvasContent && !detailsEverOpened && !detailsHintDismissed}
+        target={detailsHeaderLayout}
+        heading="Finish your drill"
+        message="Add a name and any details you'd like, then save."
+        tooltipPosition="above"
+        onSkip={() => setDetailsHintDismissed(true)}
+        nonBlocking
+      />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -323,8 +296,6 @@ export default function DrillEditorScreen() {
           contentContainerStyle={e.content}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
-          onTouchStart={dismissAllTips}
-          onScrollBeginDrag={dismissAllTips}
         >
           {/* Canvas */}
           <DiagramCanvas
@@ -341,12 +312,8 @@ export default function DrillEditorScreen() {
           {/* Tools - collapsible */}
           <TouchableOpacity ref={toolsHeaderRef} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => {
             const willOpen = !toolsOpen;
-            dismissAllTips();
             toggle(setToolsOpen);
-            if (willOpen && showGuide && selectedGoal === 'create_drill' && !toolsTipShown) {
-              setToolsTipShown(true);
-              setToolsTipVisible(true);
-            }
+            if (willOpen) setToolsEverOpened(true);
           }} activeOpacity={0.7}>
             <Text style={e.sectionToggleText}>Tools</Text>
             {toolsOpen ? <ChevronUp size={16} color={tc.mutedForeground} /> : <ChevronDown size={16} color={tc.mutedForeground} />}
@@ -361,7 +328,6 @@ export default function DrillEditorScreen() {
 
           {/* Properties - collapsible */}
           <TouchableOpacity style={[e.sectionToggle, propsOpen && e.sectionToggleOpen]} onPress={() => {
-            dismissAllTips();
             toggle(setPropsOpen);
           }} activeOpacity={0.7}>
             <Text style={e.sectionToggleText}>Properties</Text>
@@ -378,12 +344,8 @@ export default function DrillEditorScreen() {
           {/* Drill Details - collapsible */}
           <TouchableOpacity ref={detailsHeaderRef} style={[e.sectionToggle, detailsOpen && e.sectionToggleOpen]} onPress={() => {
             const willOpen = !detailsOpen;
-            dismissAllTips();
             toggle(setDetailsOpen);
-            if (willOpen && showGuide && selectedGoal === 'create_drill' && !detailsTipShown) {
-              setDetailsTipShown(true);
-              setDetailsTipVisible(true);
-            }
+            if (willOpen) setDetailsEverOpened(true);
           }} activeOpacity={0.7}>
             <Text style={e.sectionToggleText}>Drill Details</Text>
             {detailsOpen ? <ChevronUp size={16} color={tc.mutedForeground} /> : <ChevronDown size={16} color={tc.mutedForeground} />}

@@ -36,7 +36,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrillDiagramView } from '../src/components/DrillDiagramView';
 import { track } from '../src/lib/analytics';
-import { useOnboarding, SpotlightOverlay, useMeasure } from '../src/onboarding';
+import { useOnboarding, SpotlightOverlay, CoachTooltip, useMeasure } from '../src/onboarding';
 import { getCustomDrills } from '../src/lib/customDrillStorage';
 import { convertToDrillJson } from '../src/lib/drillConverter';
 import { generateActivityId, getSession, saveSession, updateSession } from '../src/lib/sessionStorage';
@@ -668,26 +668,15 @@ export default function SessionEditorScreen() {
         <Text style={s.headerTitle}>{isNew ? 'New Session' : 'Edit Session'}</Text>
       </View>
 
-      {/* Non-blocking spotlight step 1: Add your first drill */}
+      {/* Non-blocking spotlight step 1: Add your first activity */}
       <SpotlightOverlay
         visible={showGuide && selectedGoal === 'build_practice' && guideStep === 1 && isNew}
         target={addActivityLayout}
-        heading="Add your first drill"
-        message="Let's find a drill for your practice."
+        heading="Add your first activity"
+        message="Start by adding a drill to your practice."
         tooltipPosition="above"
         onSkip={dismissCoachMark}
         nonBlocking
-      />
-
-      {/* Spotlight step 2: Success — no target, centered */}
-      <SpotlightOverlay
-        visible={showGuide && selectedGoal === 'build_practice' && guideStep === 2}
-        heading="Your practice is taking shape!"
-        message="You've added your first drill. Keep adding drills, or save when you're ready."
-        celebrate
-        buttonText="Got it"
-        onButtonPress={completeGuide}
-        onSkip={completeGuide}
       />
 
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -717,6 +706,17 @@ export default function SessionEditorScreen() {
             </View>
             <View style={s.fieldGroup}><Text style={s.label}>Session Goals</Text><TextInput style={[s.input, { height: 60 }]} value={session.session_goals} onChangeText={v => setSession({...session, session_goals: v})} placeholder="What do you want to achieve?" placeholderTextColor={tc.mutedForeground} multiline /></View>
           </View>
+
+          {/* Compact success hint after first drill added */}
+          {showGuide && selectedGoal === 'build_practice' && guideStep === 2 && (
+            <CoachTooltip
+              heading="First drill added!"
+              message="Keep building your practice or save when you're ready."
+              celebrate
+              buttonText="Got it"
+              onDismiss={completeGuide}
+            />
+          )}
 
           {/* Activities */}
           <View style={s.section}>
