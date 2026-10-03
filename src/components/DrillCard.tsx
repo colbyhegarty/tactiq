@@ -164,28 +164,30 @@ function DrillCardInner({
 
           {showOverlay && !isLocked && (
             <View style={styles.overlay}>
-              {onQuickView && (
+              <View style={styles.overlayButtons}>
+                {onQuickView && (
+                  <TouchableOpacity
+                    style={[styles.overlayBtnWhite, compact && styles.overlayBtnCompact]}
+                    onPress={() => { setShowOverlay(false); onQuickView(drill); }}
+                  >
+                    {compact ? (
+                      <Search size={18} color={tc.primary} />
+                    ) : (
+                      <Text style={styles.overlayBtnWhiteText}>Quick View</Text>
+                    )}
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity
-                  style={[styles.overlayBtnWhite, compact && styles.overlayBtnCompact]}
-                  onPress={() => { setShowOverlay(false); onQuickView(drill); }}
+                  style={[styles.overlayBtnGreen, compact && styles.overlayBtnCompact]}
+                  onPress={() => { setShowOverlay(false); onPress(drill); }}
                 >
                   {compact ? (
-                    <Search size={18} color={tc.primary} />
+                    <Eye size={18} color="#fff" />
                   ) : (
-                    <Text style={styles.overlayBtnWhiteText}>Quick View</Text>
+                    <Text style={styles.overlayBtnGreenText}>View Drill</Text>
                   )}
                 </TouchableOpacity>
-              )}
-              <TouchableOpacity
-                style={[styles.overlayBtnGreen, compact && styles.overlayBtnCompact]}
-                onPress={() => { setShowOverlay(false); onPress(drill); }}
-              >
-                {compact ? (
-                  <Eye size={18} color="#fff" />
-                ) : (
-                  <Text style={styles.overlayBtnGreenText}>View Drill</Text>
-                )}
-              </TouchableOpacity>
+              </View>
             </View>
           )}
         </Pressable>
@@ -274,6 +276,7 @@ function create_styles(tc: any) { return StyleSheet.create({
     aspectRatio: 4 / 3,
     backgroundColor: tc.fieldDark,
     position: 'relative',
+    overflow: 'hidden',
   },
   shimmer: {
     ...StyleSheet.absoluteFillObject,
@@ -314,8 +317,12 @@ function create_styles(tc: any) { return StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'center', alignItems: 'center',
-    flexDirection: 'row', gap: 8, zIndex: 20,
+    justifyContent: 'flex-end', alignItems: 'center',
+    paddingBottom: spacing.md,
+    zIndex: 20,
+  },
+  overlayButtons: {
+    flexDirection: 'row', gap: 8,
   },
   overlayBtnWhite: {
     backgroundColor: 'rgba(255,255,255,0.95)',
