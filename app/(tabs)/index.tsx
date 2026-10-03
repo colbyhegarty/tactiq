@@ -691,7 +691,7 @@ function create_styles(tc: any) { return StyleSheet.create({
   pageEllipsis: { fontSize: 14, color: tc.mutedForeground, paddingHorizontal: 4, lineHeight: 36 },
   // Overlays
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(21, 24, 35, 0.85)',
     justifyContent: 'center', alignItems: 'center', zIndex: 100,
   },
