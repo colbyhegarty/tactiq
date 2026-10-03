@@ -102,16 +102,27 @@ export function OnboardingFlow({ visible }: OnboardingFlowProps) {
   }, [visible]);
 
   const handleGoalSelect = (goal: OnboardingGoal) => {
-    // Navigate before completing onboarding so the target screen is already
-    // pushing in while the modal fades — prevents a flash of the Library tab.
-    if (goal === 'create_drill') {
-      router.push('/drill-editor');
+    // Navigate before dismissing the modal so the target screen is in place
+    // when the modal disappears — prevents a flash of the Library tab.
+    switch (goal) {
+      case 'create_drill':
+        router.push('/drill-editor');
+        break;
+      case 'build_practice':
+        router.replace('/sessions');
+        break;
+      case 'find_drills':
+        // Library is already the active tab — no navigation needed.
+        break;
+      case 'explore':
+      default:
+        break;
     }
     completeOnboarding(goal);
   };
 
   return (
-    <Modal visible={visible} animationType="fade" statusBarTranslucent>
+    <Modal visible={visible} animationType="none" statusBarTranslucent>
       <View style={[s.container, { backgroundColor: colors.background }]}>
         {/* Header */}
         <Animated.View

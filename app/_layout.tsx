@@ -1,4 +1,3 @@
-import { useRouter } from 'expo-router';
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
@@ -19,8 +18,7 @@ const drillPrefetch = prefetchDrills();
 
 function RootStack() {
   const { colors } = useTheme();
-  const { isLoaded: onboardingLoaded, hasCompletedOnboarding, selectedGoal } = useOnboarding();
-  const router = useRouter();
+  const { isLoaded: onboardingLoaded, hasCompletedOnboarding } = useOnboarding();
 
   useEffect(() => {
     initAnalytics();
@@ -40,31 +38,8 @@ function RootStack() {
     });
   }, []);
 
-  // After onboarding completes, navigate to the right tab based on goal
-  useEffect(() => {
-    if (!onboardingLoaded || !hasCompletedOnboarding || !selectedGoal) return;
-
-    // Small delay to let the modal dismiss
-    const timer = setTimeout(() => {
-      switch (selectedGoal) {
-        case 'build_practice':
-          router.replace('/sessions');
-          break;
-        case 'find_drills':
-          router.replace('/');
-          break;
-        case 'create_drill':
-          // Handled by OnboardingFlow before modal dismisses — no action needed here.
-          break;
-        case 'explore':
-        default:
-          // Stay on default tab (Library)
-          break;
-      }
-    }, 100);
-
-    return () => clearTimeout(timer);
-  }, [onboardingLoaded, hasCompletedOnboarding, selectedGoal]);
+  // Navigation after onboarding is handled inside OnboardingFlow.handleGoalSelect
+  // so the target screen is in place before the modal disappears.
 
   return (
     <>
