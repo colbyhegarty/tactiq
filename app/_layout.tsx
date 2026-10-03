@@ -54,10 +54,12 @@ function RootStack() {
           router.replace('/');
           break;
         case 'create_drill':
-          // Go directly to the drill editor (skip the "start from scratch/existing" screen).
-          // Land on Library tab first so the back button has somewhere to go.
-          router.replace('/');
-          setTimeout(() => router.push('/drill-editor'), 150);
+          // Navigate to Create tab then immediately push drill editor on top.
+          // React Navigation batches both updates in the same tick, so the
+          // Create screen never visibly renders — the user goes straight to
+          // the editor. Back button returns to the Create screen normally.
+          router.replace('/create');
+          router.push('/drill-editor');
           break;
         case 'explore':
         default:
