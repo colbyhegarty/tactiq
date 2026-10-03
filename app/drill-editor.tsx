@@ -294,7 +294,7 @@ export default function DrillEditorScreen() {
           <View>
 
           {/* Tools - collapsible */}
-          <TouchableOpacity ref={toolsHeaderRef} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => {
+          <TouchableOpacity ref={toolsHeaderRef} collapsable={false} style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen]} onPress={() => {
             const willOpen = !toolsOpen;
             toggle(setToolsOpen);
             if (willOpen) setToolsEverOpened(true);

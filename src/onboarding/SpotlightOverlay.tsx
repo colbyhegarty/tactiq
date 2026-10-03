@@ -55,34 +55,102 @@ interface SpotlightOverlayProps {
 
 /**
  * Measures a View ref's position on screen.
- * Returns null until measurement succeeds.
+ * Returns null until a valid, stable measurement is obtained.
+ *
+ * Waits for the view to complete layout, then measures its window position.
+ * Re-measures whenever deps change or the view re-layouts. Two consecutive
+ * measurements must agree (within 1px) to confirm the layout has settled,
+ * preventing stale coordinates from navigation transitions or async renders.
  */
 export function useMeasure(ref: React.RefObject<any>, deps: any[] = []) {
   const [layout, setLayout] = useState<SpotlightTarget | null>(null);
+  const lastRaw = useRef<SpotlightTarget | null>(null);
+  const cancelledRef = useRef(false);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const screen = Dimensions.get('window');
 
-  useEffect(() => {
-    let attempts = 0;
-    const tryMeasure = () => {
-      if (!ref.current) {
-        if (attempts < 10) {
-          attempts++;
-          setTimeout(tryMeasure, 100);
-        }
-        return;
+  const clearRetry = () => {
+    if (retryTimer.current) {
+      clearTimeout(retryTimer.current);
+      retryTimer.current = null;
+    }
+  };
+
+  /** Validate that coordinates are on-screen and the element has real size */
+  const isValid = (t: SpotlightTarget): boolean =>
+    t.width > 2 &&
+    t.height > 2 &&
+    t.x >= -t.width &&
+    t.y >= -t.height &&
+    t.x < screen.width + t.width &&
+    t.y < screen.height + t.height;
+
+  /** Check if two measurements agree within 1px (layout has settled) */
+  const isStable = (a: SpotlightTarget, b: SpotlightTarget): boolean =>
+    Math.abs(a.x - b.x) <= 1 &&
+    Math.abs(a.y - b.y) <= 1 &&
+    Math.abs(a.width - b.width) <= 1 &&
+    Math.abs(a.height - b.height) <= 1;
+
+  const measure = (attempt = 0) => {
+    if (cancelledRef.current) return;
+    if (!ref.current) {
+      // Ref not attached yet — retry up to 20 times
+      if (attempt < 20) {
+        retryTimer.current = setTimeout(() => measure(attempt + 1), 100);
       }
-      ref.current.measureInWindow(
-        (x: number, y: number, width: number, height: number) => {
-          if (width > 0 && height > 0) {
-            setLayout({ x, y, width, height });
-          } else if (attempts < 10) {
-            attempts++;
-            setTimeout(tryMeasure, 100);
+      return;
+    }
+
+    ref.current.measureInWindow(
+      (x: number, y: number, width: number, height: number) => {
+        if (cancelledRef.current) return;
+        const measured = { x, y, width, height };
+
+        if (!isValid(measured)) {
+          // Invalid measurement — retry
+          if (attempt < 20) {
+            retryTimer.current = setTimeout(() => measure(attempt + 1), 100);
           }
-        },
-      );
+          return;
+        }
+
+        // Require two consecutive stable measurements to confirm layout settled
+        if (lastRaw.current && isStable(lastRaw.current, measured)) {
+          setLayout(measured);
+          lastRaw.current = measured;
+        } else {
+          // First valid measurement or position changed — record and re-check
+          lastRaw.current = measured;
+          if (attempt < 20) {
+            retryTimer.current = setTimeout(() => measure(attempt + 1), 80);
+          } else {
+            // Max attempts — accept the last valid measurement
+            setLayout(measured);
+          }
+        }
+      },
+    );
+  };
+
+  // Reset and re-measure when deps change
+  useEffect(() => {
+    cancelledRef.current = false;
+    lastRaw.current = null;
+    setLayout(null);
+    clearRetry();
+
+    // Use requestAnimationFrame to wait for the current frame's layout pass,
+    // then start measuring — avoids reading stale pre-layout coordinates
+    const raf = requestAnimationFrame(() => {
+      measure(0);
+    });
+
+    return () => {
+      cancelledRef.current = true;
+      clearRetry();
+      cancelAnimationFrame(raf);
     };
-    // Small delay to let layout settle
-    setTimeout(tryMeasure, 150);
   }, deps);
 
   return layout;
@@ -107,8 +175,16 @@ export function SpotlightOverlay({
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const screen = Dimensions.get('window');
 
+  // Don't render until the target has been measured. When `target` is explicitly
+  // `null` (useMeasure hasn't resolved yet), the overlay waits. When `target` is
+  // `undefined` (no target prop passed), a centered tooltip shows immediately.
+  // This prevents the overlay from appearing with stale/wrong coordinates during
+  // navigation transitions or before layout has settled.
+  const targetPending = target === null;
+  const ready = visible && !targetPending;
+
   useEffect(() => {
-    if (visible) {
+    if (ready) {
       Animated.timing(fadeAnim, {
         toValue: 1,
         duration: 300,
@@ -117,7 +193,7 @@ export function SpotlightOverlay({
     } else {
       fadeAnim.setValue(0);
     }
-  }, [visible]);
+  }, [ready]);
 
   // Highlight rectangle (with padding)
   const hl = visible && target
@@ -224,7 +300,7 @@ export function SpotlightOverlay({
 
   // ── Non-blocking mode: no Modal, no dark overlay ───────────────
   if (nonBlocking) {
-    if (!visible) return null;
+    if (!ready) return null;
     return (
       <Animated.View
         style={[StyleSheet.absoluteFill, { opacity: fadeAnim, zIndex: 999 }]}
@@ -254,7 +330,7 @@ export function SpotlightOverlay({
 
   // ── Standard blocking mode with Modal ──────────────────────────
   return (
-    <Modal transparent visible={visible} animationType="none" statusBarTranslucent onRequestClose={onSkip}>
+    <Modal transparent visible={ready} animationType="none" statusBarTranslucent onRequestClose={onSkip}>
       <Animated.View style={[StyleSheet.absoluteFill, { opacity: fadeAnim }]}>
         {/* Dark overlay — built from 4 rectangles with a cutout */}
         {hl ? (

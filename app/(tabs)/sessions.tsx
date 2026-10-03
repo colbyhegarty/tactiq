@@ -319,7 +319,7 @@ export default function SessionsScreen() {
             <Text style={st.emptyTitle}>{filterDate ? 'No sessions on this day' : 'No sessions yet'}</Text>
             <Text style={st.emptySubtitle}>{filterDate ? 'Try selecting a different date' : 'Create your first training session'}</Text>
             {!filterDate && (
-              <TouchableOpacity ref={createBtnRef} style={st.createButton} onPress={handleCreateSession}>
+              <TouchableOpacity ref={createBtnRef} collapsable={false} style={st.createButton} onPress={handleCreateSession}>
                 <Plus size={16} color={tc.primaryForeground} /><Text style={st.createButtonText}>Create Session</Text>
               </TouchableOpacity>
             )}
