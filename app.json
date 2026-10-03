@@ -2,7 +2,7 @@
   "expo": {
     "name": "Tactiq",
     "slug": "tactiq",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tactiq",
@@ -11,7 +11,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.colbyhegarty.tactiq",
-      "buildNumber": "21",
+      "buildNumber": "22",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSUserTrackingUsageDescription": "We use this to show you more relevant ads and improve your experience."
@@ -65,7 +65,12 @@
           "isAutoInitEnabled": true,
           "iosUserTrackingPermission": "We use this to show you more relevant ads and improve your experience."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-image",
+      "expo-sharing",
+      "expo-status-bar",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true,
