@@ -289,23 +289,28 @@ export default function DrillEditorScreen() {
           <View>
 
           {/* Tools - collapsible */}
-          {showDrillGuide && (
-            <View style={[e.guideCard, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
-              <Text style={[e.guideHeading, { color: tc.foreground }]}>Build your drill</Text>
-              <Text style={[e.guideMessage, { color: tc.mutedForeground }]}>Open Tools to add players, cones, goals, and movements.</Text>
-              <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={e.guideClose}>
-                <X size={14} color={tc.mutedForeground} />
-              </TouchableOpacity>
-            </View>
-          )}
-          <TouchableOpacity style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen, showDrillGuide && { borderColor: tc.primary, borderWidth: 2 }]} onPress={() => {
-            const willOpen = !toolsOpen;
-            toggle(setToolsOpen);
-            if (willOpen) setToolsEverOpened(true);
-          }} activeOpacity={0.7}>
-            <Text style={e.sectionToggleText}>Tools</Text>
-            {toolsOpen ? <ChevronUp size={16} color={tc.mutedForeground} /> : <ChevronDown size={16} color={tc.mutedForeground} />}
-          </TouchableOpacity>
+          <View style={showDrillGuide ? e.guideWrapper : undefined}>
+            {showDrillGuide && (
+              <>
+                <View style={[e.guideOverlay, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
+                  <Text style={[e.guideHeading, { color: tc.foreground }]}>Build your drill</Text>
+                  <Text style={[e.guideMessage, { color: tc.mutedForeground }]}>Open Tools to add players, cones, goals, and movements.</Text>
+                  <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={e.guideClose}>
+                    <X size={14} color={tc.mutedForeground} />
+                  </TouchableOpacity>
+                </View>
+                <View style={[e.guideBorder, { borderColor: tc.primary }]} pointerEvents="none" />
+              </>
+            )}
+            <TouchableOpacity style={[e.sectionToggle, toolsOpen && e.sectionToggleOpen, showDrillGuide && { marginTop: 0 }]} onPress={() => {
+              const willOpen = !toolsOpen;
+              toggle(setToolsOpen);
+              if (willOpen) setToolsEverOpened(true);
+            }} activeOpacity={0.7}>
+              <Text style={e.sectionToggleText}>Tools</Text>
+              {toolsOpen ? <ChevronUp size={16} color={tc.mutedForeground} /> : <ChevronDown size={16} color={tc.mutedForeground} />}
+            </TouchableOpacity>
+          </View>
           {toolsOpen && (
             <View style={e.sectionBody}>
               <View style={e.sectionBodyInner}>
@@ -466,8 +471,10 @@ function create_e(tc: any) { return StyleSheet.create({
   clearBtnText: { fontSize: 14, fontWeight: '500', color: tc.foreground },
   saveBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, backgroundColor: tc.primary, borderRadius: borderRadius.md, paddingVertical: 14 },
   saveBtnText: { fontSize: 14, fontWeight: '600', color: tc.primaryForeground },
-  guideCard: { marginTop: spacing.sm, marginHorizontal: 0, paddingHorizontal: spacing.md, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1, gap: 4 },
-  guideHeading: { fontSize: 14, fontWeight: '700', paddingRight: spacing.lg },
+  guideWrapper: { position: 'relative' as const, zIndex: 10, overflow: 'visible' as const, marginTop: spacing.sm },
+  guideOverlay: { position: 'absolute' as const, bottom: '100%', left: 0, right: 0, marginBottom: 12, marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, gap: 4, zIndex: 20 },
+  guideBorder: { position: 'absolute' as const, top: -8, left: -8, right: -8, bottom: -8, borderWidth: 2, borderRadius: 10, zIndex: 1 },
+  guideHeading: { fontSize: 16, fontWeight: '700', paddingRight: spacing.lg },
   guideMessage: { fontSize: 13, lineHeight: 19, paddingRight: spacing.lg },
-  guideClose: { position: 'absolute' as const, top: 10, right: 10, padding: 2 },
+  guideClose: { position: 'absolute' as const, top: 12, right: 12, padding: 2 },
 }); };

@@ -720,18 +720,23 @@ export default function SessionEditorScreen() {
                   isFirst={i === 0} isLast={i === activities.length - 1} />
               ))
             )}
-            {showAddGuide && (
-              <View style={[s.guideCard, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
-                <Text style={[s.guideHeading, { color: tc.foreground }]}>Add your first drill</Text>
-                <Text style={[s.guideMessage, { color: tc.mutedForeground }]}>Start by adding a drill to your practice.</Text>
-                <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={s.guideClose}>
-                  <X size={14} color={tc.mutedForeground} />
-                </TouchableOpacity>
-              </View>
-            )}
-            <TouchableOpacity style={[s.addDashed, showAddGuide && { borderColor: tc.primary, borderWidth: 2 }]} onPress={handleAddActivityPress}>
-              <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
-            </TouchableOpacity>
+            <View style={showAddGuide ? s.guideWrapper : undefined}>
+              {showAddGuide && (
+                <>
+                  <View style={[s.guideOverlay, { backgroundColor: tc.coachMark, borderColor: tc.primary }]}>
+                    <Text style={[s.guideHeading, { color: tc.foreground }]}>Add your first drill</Text>
+                    <Text style={[s.guideMessage, { color: tc.mutedForeground }]}>Start by adding a drill to your practice.</Text>
+                    <TouchableOpacity onPress={dismissCoachMark} hitSlop={12} style={s.guideClose}>
+                      <X size={14} color={tc.mutedForeground} />
+                    </TouchableOpacity>
+                  </View>
+                  <View style={[s.guideBorder, { borderColor: tc.primary }]} pointerEvents="none" />
+                </>
+              )}
+              <TouchableOpacity style={[s.addDashed, showAddGuide && { marginTop: 0 }]} onPress={handleAddActivityPress}>
+                <Plus size={16} color={tc.mutedForeground} /><Text style={s.addDashedText}>Add Activity</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Equipment */}
@@ -818,10 +823,12 @@ function create_s(tc: any) { return StyleSheet.create({
   emptyText: { textAlign: 'center', color: tc.mutedForeground, fontSize: 13, paddingVertical: spacing.lg },
   addDashed: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.xs, borderWidth: 1.5, borderStyle: 'dashed', borderColor: tc.border, borderRadius: borderRadius.md, paddingVertical: 12, marginTop: spacing.sm },
   addDashedText: { fontSize: 13, color: tc.mutedForeground },
-  guideCard: { marginTop: spacing.sm, marginHorizontal: 0, paddingHorizontal: spacing.md, paddingVertical: 12, borderRadius: borderRadius.md, borderWidth: 1, gap: 4 },
-  guideHeading: { fontSize: 14, fontWeight: '700', paddingRight: spacing.lg },
+  guideWrapper: { position: 'relative' as const, zIndex: 10, overflow: 'visible' as const, marginTop: spacing.sm },
+  guideOverlay: { position: 'absolute' as const, bottom: '100%', left: 0, right: 0, marginBottom: 12, marginHorizontal: spacing.xs, paddingHorizontal: spacing.md, paddingVertical: 14, borderRadius: borderRadius.lg, borderWidth: 1, gap: 4, zIndex: 20 },
+  guideBorder: { position: 'absolute' as const, top: -8, left: -8, right: -8, bottom: -8, borderWidth: 2, borderRadius: 10, zIndex: 1 },
+  guideHeading: { fontSize: 16, fontWeight: '700', paddingRight: spacing.lg },
   guideMessage: { fontSize: 13, lineHeight: 19, paddingRight: spacing.lg },
-  guideClose: { position: 'absolute' as const, top: 10, right: 10, padding: 2 },
+  guideClose: { position: 'absolute' as const, top: 12, right: 12, padding: 2 },
   equipList: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   equipChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs, backgroundColor: tc.background, borderRadius: borderRadius.md, paddingHorizontal: spacing.sm, paddingVertical: 6, borderWidth: 1, borderColor: tc.border },
   equipText: { fontSize: 13, color: tc.foreground },
