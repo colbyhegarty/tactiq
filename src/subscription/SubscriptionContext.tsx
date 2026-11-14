@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform } from 'react-native';
 import Purchases, { CustomerInfo, PurchasesPackage } from 'react-native-purchases';
 import { setUserProperties, track } from '../lib/analytics';
 import { getCustomDrills } from '../lib/customDrillStorage';
@@ -328,7 +328,12 @@ export function SubscriptionProvider({ children }: { children: React.ReactNode }
       setUserProperties({ tier });
 
       if (!isProUser) {
-        Alert.alert('No Purchase Found', 'We couldn\'t find a previous Pro subscription for this Apple ID.');
+        Alert.alert(
+          'No Purchase Found',
+          Platform.OS === 'android'
+            ? 'We couldn\'t find a previous Pro subscription for this Google Play account.'
+            : 'We couldn\'t find a previous Pro subscription for this Apple ID.',
+        );
       }
 
       return isProUser;

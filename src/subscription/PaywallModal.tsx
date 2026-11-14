@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Linking,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -220,7 +221,9 @@ export function PaywallModal({ visible, onDismiss, reason }: PaywallModalProps) 
           </TouchableOpacity>
 
           <Text style={[s.legalText, { color: colors.mutedForeground }]}>
-            Payment will be charged to your Apple ID account at confirmation of purchase.
+            {Platform.OS === 'android'
+              ? 'Payment will be charged to your Google Play account at confirmation of purchase.'
+              : 'Payment will be charged to your Apple ID account at confirmation of purchase.'}{' '}
             Subscription automatically renews unless canceled at least 24 hours before the
             end of the current period. Your account will be charged for renewal within 24
             hours prior to the end of the current period.

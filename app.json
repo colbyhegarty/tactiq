@@ -19,6 +19,7 @@
       "backgroundColor": "#151823"
     },
     "android": {
+      "package": "com.colbyhegarty.tactiq",
       "adaptiveIcon": {
         "backgroundColor": "#111821",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
