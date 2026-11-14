@@ -20,7 +20,7 @@ try {
 
 // Keep this in one place so Meta attribution always runs after configure.
 const REVENUECAT_API_KEY_APPLE = 'appl_agPpQSTiiyCOlhqYogvPgOwegZw';
-const REVENUECAT_API_KEY_GOOGLE = 'GOOGLE_API_KEY_PLACEHOLDER'; // TODO: Replace with goog_ key from RevenueCat dashboard
+const REVENUECAT_API_KEY_GOOGLE = 'goog_luYvWyYCjkefgSbOzsFonjtGpSB';
 const REVENUECAT_API_KEY =
   Platform.OS === 'android' ? REVENUECAT_API_KEY_GOOGLE : REVENUECAT_API_KEY_APPLE;
 
