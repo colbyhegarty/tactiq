@@ -19,6 +19,10 @@
         "appleId": "c30hegarty@gmail.com",
         "ascAppId": "6763797389",
         "appleTeamId": "2H9TPJ4L8B"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./play-store-service-account.json",
+        "track": "internal"
       }
     }
   }

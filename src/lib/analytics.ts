@@ -14,6 +14,7 @@
 // PostHog free tier: 1M events/month, no credit card required.
 // ══════════════════════════════════════════════════════════════════
 
+import { Platform } from 'react-native';
 import PostHog from 'posthog-react-native';
 
 // ── Config ─────────────────────────────────────────────────────────
@@ -35,6 +36,8 @@ export async function initAnalytics(): Promise<void> {
       host: POSTHOG_HOST,
       captureAppLifecycleEvents: true,
     });
+    // Set platform property so funnels can be filtered by OS
+    posthog.identify(undefined, { platform: Platform.OS });
     if (__DEV__) console.log('[Analytics] PostHog initialized');
   } catch (err) {
     if (__DEV__) console.warn('[Analytics] PostHog init failed:', err);
