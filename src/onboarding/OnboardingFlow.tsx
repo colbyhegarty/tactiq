@@ -112,10 +112,10 @@ export function OnboardingFlow({ visible }: OnboardingFlowProps) {
         router.replace('/sessions');
         break;
       case 'find_drills':
-        // Library is already the active tab — no navigation needed.
-        break;
       case 'explore':
       default:
+        // Explicitly navigate to Library tab to ensure it's active on all platforms.
+        router.replace('/(tabs)');
         break;
     }
     completeOnboarding(goal);
